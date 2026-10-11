@@ -1,5 +1,6 @@
 import SwiftUI
 import MediaPlayer
+import AVKit
 
 /// Medya kontrol widget'ı.
 /// Ses: custom Slider YOK -> MPVolumeView (sistem sesi + AirPlay).
@@ -47,8 +48,12 @@ struct MediaControlView: View {
                 }
 
                 // Sistem sesi + AirPlay (doğru yöntem)
-                MPVolumeViewRepresentable()
-                    .frame(height: 32)
+                HStack(spacing: 8) {
+                    SystemVolumeView()
+                    AirPlayButtonView()
+                        .frame(width: 32, height: 32)
+                }
+                .frame(height: 32)
             }
         }
         .padding(14)
@@ -88,13 +93,23 @@ struct MediaControlView: View {
     }
 }
 
-/// MPVolumeView wrapper: sistem ses slider + AirPlay route butonu.
-struct MPVolumeViewRepresentable: UIViewRepresentable {
+/// Sistem ses slider'ı (MPVolumeView). Custom Slider ile sistem sesi
+/// değiştirilemez; bu Apple'ın bu iş için verdiği tek view'dır.
+struct SystemVolumeView: UIViewRepresentable {
     func makeUIView(context: Context) -> MPVolumeView {
-        let v = MPVolumeView(frame: .zero)
-        v.showsVolumeTextField = false
-        v.showsRouteButton = true
-        return v
+        MPVolumeView(frame: .zero)
     }
     func updateUIView(_ uiView: MPVolumeView, context: Context) {}
+}
+
+/// AirPlay / çıkış rotası butonu. MPVolumeView.showsRouteButton
+/// iOS 13'ten beri deprecated; yerine AVRoutePickerView kullanılır.
+struct AirPlayButtonView: UIViewRepresentable {
+    func makeUIView(context: Context) -> AVRoutePickerView {
+        let v = AVRoutePickerView(frame: .zero)
+        v.activeTintColor = .systemOrange
+        v.tintColor = .white
+        return v
+    }
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }

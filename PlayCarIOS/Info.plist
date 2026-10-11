@@ -2,21 +2,56 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>tr</string>
 	<key>CFBundleDisplayName</key>
 	<string>PlayCar</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>tr</string>
+		<string>en</string>
+	</array>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Müzik kontrolü ve çalan parça bilgilerini göstermek için medya arşivi erişimi gereklidir.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Arka planda da hız ve rota takibi için konum erişimi gereklidir. (İsteğe bağlı, sürüş kaydı için.)</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Navigasyon, harita takibi ve hız göstergesi için konum erişimi gereklidir.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Sürüş algılama ve hız doğruluğunu artırmak için hareket verisi kullanılır. (İsteğe bağlı.)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
 		<string>location-services</string>
 		<string>magnetometer</string>
 	</array>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIStatusBarHidden</key>
+	<false/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
@@ -27,34 +62,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UIStatusBarHidden</key>
-	<false/>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Navigasyon, harita takibi ve hız göstergesi için konum erişimi gereklidir.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Arka planda da hız ve rota takibi için konum erişimi gereklidir. (İsteğe bağlı, sürüş kaydı için.)</string>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>Müzik kontrolü ve çalan parça bilgilerini göstermek için medya arşivi erişimi gereklidir.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>Sürüş algılama ve hız doğruluğunu artırmak için hareket verisi kullanılır. (İsteğe bağlı.)</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-	</array>
-	<key>ITSAppUsesNonExemptEncryption</key>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>CFBundleAllowMixedLocalizations</key>
-	<true/>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>tr</string>
-		<string>en</string>
-	</array>
 </dict>
 </plist>

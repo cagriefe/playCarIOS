@@ -34,112 +34,117 @@ struct MapPanelView: View {
             )
             .ignoresSafeArea()
 
-            VStack(spacing: 8) {
-                SearchBarView(searchService: searchService) { completion in
-                    searchService.resolve(completion) { item in
-                        guard let item else { return }
-                        nav.stop()
-                        overviewRoute = nil
-                        selectedPlace = item
-                        selectedSubtitle = completion.subtitle
-                        cameraTarget = item.placemark.coordinate
-                        followUser = false
+            HStack(alignment: .top, spacing: 8) {
+                VStack(spacing: 8) {
+                    SearchBarView(searchService: searchService) { completion in
+                        searchService.resolve(completion) { item in
+                            guard let item else { return }
+                            nav.stop()
+                            overviewRoute = nil
+                            selectedPlace = item
+                            selectedSubtitle = completion.subtitle
+                            cameraTarget = item.placemark.coordinate
+                            followUser = false
+                        }
+                    } onSave: { completion in
+                        searchService.resolve(completion) { item in
+                            guard let item else { return }
+                            favorites.add(
+                                name: item.name ?? completion.title,
+                                address: completion.subtitle,
+                                coordinate: item.placemark.coordinate
+                            )
+                        }
                     }
-                } onSave: { completion in
-                    searchService.resolve(completion) { item in
-                        guard let item else { return }
-                        favorites.add(
-                            name: item.name ?? completion.title,
-                            address: completion.subtitle,
-                            coordinate: item.placemark.coordinate
+
+                    if locationManager.authState != .authorized {
+                        LocationPermissionBanner(
+                            state: locationManager.authState,
+                            onRequest: { locationManager.requestPermission() }
                         )
                     }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 10)
 
-                if locationManager.authState != .authorized {
-                    LocationPermissionBanner(
-                        state: locationManager.authState,
-                        onRequest: { locationManager.requestPermission() }
-                    )
-                    .padding(.horizontal, 12)
+                    navBanner
                 }
-
-                navBanner
-                    .padding(.horizontal, 12)
+                .frame(maxWidth: 340)
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 12)
+            .padding(.top, 46) // üst durum çubuğunun altında
 
-            VStack {
-                Spacer()
-                HStack(alignment: .bottom) {
-                    // Seçili yer kartı: Apple Maps'teki gibi favoriye ekle + kapat
-                    if let item = selectedPlace {
-                        HStack(spacing: 8) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(item.name ?? "Seçili konum")
-                                    .font(.subheadline.bold())
-                                    .lineLimit(1)
-                                Text(selectedSubtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer(minLength: 0)
-                            Button {
-                                startPreview(for: item)
-                            } label: {
-                                Image(systemName: "car.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.blue)
-                                    .frame(width: 44, height: 44)
-                            }
-                            Button {
-                                favorites.add(
-                                    name: item.name ?? "Seçili konum",
-                                    address: selectedSubtitle,
-                                    coordinate: item.placemark.coordinate
-                                )
-                            } label: {
-                                Image(systemName: favorites.contains(coordinate: item.placemark.coordinate)
-                                      ? "star.fill" : "star")
-                                    .font(.title3)
-                                    .foregroundStyle(.yellow)
-                                    .frame(width: 44, height: 44)
-                            }
-                            Button { selectedPlace = nil } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 44, height: 44)
-                            }
-                        }
-                        .padding(10)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        .frame(maxWidth: 320)
-                        .padding(.leading, 12)
-                        .padding(.bottom, 12)
-                    } else {
-                        Spacer(minLength: 0)
+            // Sol ikon rayı (CarPlay sidebar): dikey ortalı yüzen hap
+            HStack {
+                VStack {
+                    Spacer(minLength: 0)
+                    VStack(spacing: 6) {
+                        railButton(icon: "location.fill", active: followUser, action: recenter)
+                        railButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
+                        railButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
+                        railButton(icon: "star.fill", active: false) { showFavorites = true }
                     }
-                    Spacer()
-                    MapControls(
-                        is3D: $is3D,
-                        showTraffic: $showTraffic,
-                        followUser: $followUser,
-                        onRecenter: {
-                            followUser = true
-                            selectedPlace = nil
-                            if let coord = locationManager.lastLocation?.coordinate {
-                                cameraTarget = coord
-                            }
-                        },
-                        onFavorites: { showFavorites = true }
-                    )
-                    .padding(.trailing, 12)
-                    .padding(.bottom, 12)
+                    .padding(6)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
+                    Spacer(minLength: 0)
                 }
+                Spacer(minLength: 0)
             }
+            .padding(.leading, 10)
+            .frame(maxHeight: .infinity)
+
+            // Seçili yer kartı (sol altta, sağ kartların önünden çekik)
+            HStack(alignment: .bottom) {
+                if let item = selectedPlace {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.name ?? "Seçili konum")
+                                .font(.subheadline.bold())
+                                .lineLimit(1)
+                            Text(selectedSubtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        Button {
+                            startPreview(for: item)
+                        } label: {
+                            Image(systemName: "car.fill")
+                                .font(.title3)
+                                .foregroundStyle(.blue)
+                                .frame(width: 44, height: 44)
+                        }
+                        Button {
+                            favorites.add(
+                                name: item.name ?? "Seçili konum",
+                                address: selectedSubtitle,
+                                coordinate: item.placemark.coordinate
+                            )
+                        } label: {
+                            Image(systemName: favorites.contains(coordinate: item.placemark.coordinate)
+                                  ? "star.fill" : "star")
+                                .font(.title3)
+                                .foregroundStyle(.yellow)
+                                .frame(width: 44, height: 44)
+                        }
+                        Button { selectedPlace = nil } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                    }
+                    .padding(10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    .frame(maxWidth: 330)
+                } else {
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, 72)
+            .padding(.trailing, 324)
+            .padding(.bottom, 12)
+            .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onAppear {
             locationManager.requestPermission()
@@ -185,6 +190,26 @@ struct MapPanelView: View {
             return
         }
         nav.previewRoute(to: item, from: loc)
+    }
+
+    private func recenter() {
+        followUser = true
+        selectedPlace = nil
+        if let coord = locationManager.lastLocation?.coordinate {
+            cameraTarget = coord
+        }
+    }
+
+    /// Sol ray butonu: CarPlay sidebar tarzı yuvarlak dokunmatik hedef.
+    private func railButton(icon: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 19, weight: .semibold))
+                .frame(width: 46, height: 46)
+                .background(active ? Color.accentColor : Color.white.opacity(0.12))
+                .foregroundStyle(.white)
+                .clipShape(Circle())
+        }
     }
 
     /// Navigasyon durum kartları (arama çubuğunun altında).
@@ -518,36 +543,7 @@ struct SearchBarView: View {
     }
 }
 
-// MARK: - Kontroller + izin banner
-
-struct MapControls: View {
-    @Binding var is3D: Bool
-    @Binding var showTraffic: Bool
-    @Binding var followUser: Bool
-    var onRecenter: () -> Void
-    var onFavorites: () -> Void
-
-    var body: some View {
-        VStack(spacing: 10) {
-            controlButton(icon: "location.fill", active: followUser) { onRecenter() }
-            controlButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
-            controlButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
-            controlButton(icon: "star.fill", active: false) { onFavorites() }
-        }
-    }
-
-    private func controlButton(icon: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .background(active ? Color.accentColor : Color(.systemGray5).opacity(0.9))
-                .foregroundStyle(active ? .white : .primary)
-                .clipShape(Circle())
-        }
-        .accessibilityLabel(Text(icon))
-    }
-}
+// MARK: - İzin banner
 
 /// Favoriler listesi: dokun → oraya git, kaydır → sil.
 struct FavoritesSheetView: View {

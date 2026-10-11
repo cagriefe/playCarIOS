@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// Kompakt hız göstergesi (km/h).
-/// CLLocation.speed m/s'tir: kmh = max(0, speed * 3.6).
-/// Dar sağ panele taşmadan sığması için sabit genişlik yok,
-/// tüm satırlar lineLimit(1) + minimumScaleFactor ile korunur.
+/// CarPlay tarzı hız kartı: yatay düzen, solda büyük rakam,
+/// sağda limit + ince gauge + durum. Yuvarlak yüzen kart.
 struct SpeedometerView: View {
     @ObservedObject var location: LocationManager
 
@@ -11,33 +9,30 @@ struct SpeedometerView: View {
     @AppStorage("speedLimitKmh") private var speedLimit: Double = 90
 
     var body: some View {
-        VStack(spacing: 3) {
-            HStack(spacing: 6) {
-                Text("HIZ")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 4) {
+            HStack(spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
+                    Text("\(Int(location.speedKmh.rounded()))")
+                        .font(.system(size: 46, weight: .heavy, design: .rounded))
+                        .foregroundStyle(speedColor)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    Text("km/h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 0)
-                Text("Limit \(Int(speedLimit))")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Stepper("", value: $speedLimit, in: 30...140, step: 5)
-                    .labelsHidden()
-                    .controlSize(.small)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(Int(location.speedKmh.rounded()))")
-                    .font(.system(size: 52, weight: .heavy, design: .rounded))
-                    .foregroundStyle(speedColor)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                Text("km/h")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("LİMİT \(Int(speedLimit))")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Stepper("", value: $speedLimit, in: 30...140, step: 5)
+                        .labelsHidden()
+                        .controlSize(.mini)
+                }
             }
 
             GeometryReader { geo in
@@ -49,7 +44,7 @@ struct SpeedometerView: View {
                         .frame(width: geo.size.width * gaugeProgress)
                 }
             }
-            .frame(height: 6)
+            .frame(height: 5)
 
             Text(statusText)
                 .font(.caption2)
@@ -57,8 +52,8 @@ struct SpeedometerView: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(10)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
     }
 
     private var gaugeProgress: Double {

@@ -19,7 +19,6 @@
 		B10000000000000000000008 /* MapPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* MapPanelView.swift */; };
 		B10000000000000000000009 /* SpeedometerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* SpeedometerView.swift */; };
 		B10000000000000000000010 /* MediaControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MediaControlView.swift */; };
-		B10000000000000000000011 /* TelemetryBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* TelemetryBarView.swift */; };
 		B20000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* Assets.xcassets */; };
 		B20000000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F40000000000000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
@@ -38,7 +37,6 @@
 		F10000000000000000000008 /* MapPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPanelView.swift; sourceTree = "<group>"; };
 		F10000000000000000000009 /* SpeedometerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedometerView.swift; sourceTree = "<group>"; };
 		F10000000000000000000010 /* MediaControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaControlView.swift; sourceTree = "<group>"; };
-		F10000000000000000000011 /* TelemetryBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryBarView.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F30000000000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F40000000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -105,7 +103,6 @@
 				F10000000000000000000008 /* MapPanelView.swift */,
 				F10000000000000000000009 /* SpeedometerView.swift */,
 				F10000000000000000000010 /* MediaControlView.swift */,
-				F10000000000000000000011 /* TelemetryBarView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -192,7 +189,6 @@
 				B10000000000000000000008 /* MapPanelView.swift in Sources */,
 				B10000000000000000000009 /* SpeedometerView.swift in Sources */,
 				B10000000000000000000010 /* MediaControlView.swift in Sources */,
-				B10000000000000000000011 /* TelemetryBarView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

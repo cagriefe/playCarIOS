@@ -1,9 +1,9 @@
 import SwiftUI
 import MediaPlayer
-import AVKit
 
-/// Kompakt medya widget'ı: bilgi satırı + kontrol satırı + ses satırı.
-/// Dar panele taşmadan sığar; tüm metinler lineLimit(1).
+/// CarPlay "Şimdi Çalınıyor" kartı: kapak + başlık/sanatçı + kontroller.
+/// CarPlay'de ekranda ses kontrolü olmaz (araba düğmesi kullanır),
+/// bu yüzden slider yok — kart ince ve sığar.
 struct MediaControlView: View {
     @ObservedObject var player: MusicPlayerManager
     @State private var showPlaylists = false
@@ -49,24 +49,17 @@ struct MediaControlView: View {
 
                 HStack(spacing: 12) {
                     Spacer(minLength: 0)
-                    mediaButton(icon: "backward.fill", size: 48) { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 60) {
+                    mediaButton(icon: "backward.fill", size: 46) { player.previous() }
+                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 58) {
                         player.togglePlayPause()
                     }
-                    mediaButton(icon: "forward.fill", size: 48) { player.next() }
+                    mediaButton(icon: "forward.fill", size: 46) { player.next() }
                     Spacer(minLength: 0)
                 }
-
-                HStack(spacing: 6) {
-                    SystemVolumeView()
-                    AirPlayButtonView()
-                        .frame(width: 30, height: 30)
-                }
-                .frame(height: 28)
             }
         }
-        .padding(10)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
         .sheet(isPresented: $showPlaylists) {
             PlaylistsSheetView(player: player)
@@ -88,8 +81,8 @@ struct MediaControlView: View {
                 }
             }
         }
-        .frame(width: 40, height: 40)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .frame(width: 52, height: 52)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
     private func mediaButton(icon: String, size: CGFloat, action: @escaping () -> Void) -> some View {
@@ -97,7 +90,7 @@ struct MediaControlView: View {
             Image(systemName: icon)
                 .font(.system(size: size * 0.38, weight: .semibold))
                 .frame(width: size, height: size)
-                .background(Color.accentColor)
+                .background(Color.white.opacity(0.14))
                 .foregroundStyle(.white)
                 .clipShape(Circle())
         }
@@ -160,25 +153,4 @@ struct PlaylistsSheetView: View {
         }
         .onAppear { player.loadPlaylists() }
     }
-}
-
-/// Sistem ses slider'ı (MPVolumeView). Custom Slider ile sistem sesi
-/// değiştirilemez; bu Apple'ın bu iş için verdiği tek view'dır.
-struct SystemVolumeView: UIViewRepresentable {
-    func makeUIView(context: Context) -> MPVolumeView {
-        MPVolumeView(frame: .zero)
-    }
-    func updateUIView(_ uiView: MPVolumeView, context: Context) {}
-}
-
-/// AirPlay / çıkış rotası butonu. MPVolumeView.showsRouteButton
-/// iOS 13'ten beri deprecated; yerine AVRoutePickerView kullanılır.
-struct AirPlayButtonView: UIViewRepresentable {
-    func makeUIView(context: Context) -> AVRoutePickerView {
-        let v = AVRoutePickerView(frame: .zero)
-        v.activeTintColor = .systemOrange
-        v.tintColor = .white
-        return v
-    }
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
 }

@@ -6,12 +6,23 @@ import AVKit
 /// Dar panele taşmadan sığar; tüm metinler lineLimit(1).
 struct MediaControlView: View {
     @ObservedObject var player: MusicPlayerManager
+    @State private var showPlaylists = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("MEDYA")
-                .font(.caption2.bold())
-                .foregroundStyle(.secondary)
+            HStack(spacing: 6) {
+                Text("MEDYA")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button {
+                    player.loadPlaylists()
+                    showPlaylists = true
+                } label: {
+                    Label("Listeler", systemImage: "music.note.list")
+                        .font(.caption2.bold())
+                }
+            }
 
             if player.authState != .authorized {
                 Text("Parça bilgisi için medya izni gerekir.")
@@ -57,6 +68,9 @@ struct MediaControlView: View {
         .padding(10)
         .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
+        .sheet(isPresented: $showPlaylists) {
+            PlaylistsSheetView(player: player)
+        }
     }
 
     private var artworkView: some View {
@@ -87,6 +101,64 @@ struct MediaControlView: View {
                 .foregroundStyle(.white)
                 .clipShape(Circle())
         }
+    }
+}
+
+/// Çalma listeleri sayfası: dokun → sıraya koy + çal.
+struct PlaylistsSheetView: View {
+    @ObservedObject var player: MusicPlayerManager
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if player.playlists.isEmpty {
+                    VStack(spacing: 8) {
+                        Image(systemName: "music.note.list")
+                            .font(.largeTitle)
+                            .foregroundStyle(.secondary)
+                        Text("Liste bulunamadı")
+                            .font(.headline)
+                        Text("Müzik uygulamasında bir çalma listesi oluşturun.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    List(player.playlists, id: \.persistentID) { list in
+                        Button {
+                            player.playPlaylist(list)
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "music.note.list")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(list.name ?? "İsimsiz liste")
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    Text("\(list.count) parça")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "play.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Listelerim")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Kapat") { dismiss() }
+                }
+            }
+        }
+        .onAppear { player.loadPlaylists() }
     }
 }
 

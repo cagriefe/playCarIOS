@@ -23,6 +23,7 @@ final class MusicPlayerManager: ObservableObject {
     @Published var title: String = "Çalan parça yok"
     @Published var artist: String = "—"
     @Published var artwork: UIImage?
+    @Published var playlists: [MPMediaPlaylist] = []
     @Published var lastError: String?
 
     private let player = MPMusicPlayerController.systemMusicPlayer
@@ -77,6 +78,24 @@ final class MusicPlayerManager: ObservableObject {
         player.skipToPreviousItem()
     }
 
+    /// Kullanıcının çalma listeleri (Müzik arşivi).
+    func loadPlaylists() {
+        guard authState == .authorized else { return }
+        let lists = MPMediaQuery.playlists().collections?.compactMap { $0 as? MPMediaPlaylist } ?? []
+        playlists = lists.sorted {
+            ($0.name ?? "").localizedCaseInsensitiveCompare($1.name ?? "") == .orderedAscending
+        }
+    }
+
+    /// Listeyi sıraya koyup çalmaya başlar.
+    /// MPMediaPlaylist bir MPMediaItemCollection'dır, doğrudan queue olur.
+    func playPlaylist(_ playlist: MPMediaPlaylist) {
+        guard authState == .authorized else { return }
+        player.setQueue(with: playlist)
+        player.play()
+        refreshNowPlaying()
+    }
+
     // MARK: - Private
 
     private func syncAuthState() {
@@ -92,6 +111,7 @@ final class MusicPlayerManager: ObservableObject {
     private func beginObserving() {
         player.beginGeneratingPlaybackNotifications()
         refreshNowPlaying()
+        loadPlaylists()
 
         NotificationCenter.default.addObserver(
             self,

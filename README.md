@@ -91,6 +91,39 @@ PlayCarIOS/
 | `NSAppleMusicUsageDescription` | Müzik kontrolü ve çalan parça bilgilerini göstermek için medya arşivi erişimi gereklidir. |
 | `NSMotionUsageDescription` | Sürüş algılama ve hız doğruluğunu artırmak için hareket verisi kullanılır. (İsteğe bağlı.) |
 
+## TestFlight yayını (hazır)
+
+Bu repo TestFlight'e yüklenebilir durumda. Bu makinede Xcode olmadığı için son adım (Archive) sende:
+
+### Xcode'da ilk kurulum (bir kez)
+1. `PlayCarIOS.xcodeproj` → Signing & Capabilities → **Team** seç (Apple Developer hesabı).
+   Bundle ID: `com.playcar.ios` (başkası almışsa örn. `com.<adın>.playcar` yap).
+2. Scheme: **PlayCarIOS**, destination: **Any iOS Device (arm64)**.
+3. Sürüm: `MARKETING_VERSION = 1.0.0`, build: `CURRENT_PROJECT_VERSION = 1`.
+   Her yeni TestFlight yüklemesinde **build numarasını +1 artır** (aynı sürüm+build iki kez yüklenemez).
+
+### Archive → yükleme
+1. `Product → Archive` → bitince Organizer açılır → **Distribute App → App Store Connect → Upload**.
+2. Signing: Automatic, "Strip Swift symbols" işaretli kalsın.
+3. Upload sonrası App Store Connect → TestFlight sekmesinde 5–30 dk içinde build görünür ("Missing Compliance" uyarısı **çıkmayacak** — `ITSAppUsesNonExemptEncryption=false` eklendi, şifreleme kullanılmıyor).
+
+### Bu repo TestFlight için neleri hazır getirdi
+- **İkon:** 1024×1024 alpha'sız PNG (`Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`). Alphasız olması şart, kontrol edildi.
+- **Launch screen:** otomatik üretiliyor (`UILaunchScreen_Generation`), ek dosya gerekmez.
+- **Privacy manifest** (`PrivacyInfo.xcprivacy`, bundle'a dahil): tracking yok, cihaz dışına veri gönderimi yok, `UserDefaults` için CA92.1 beyanı var. Manifest'siz yükleme 2024'ten beri reddediliyor — eklendi.
+- **Background modes:** sadece `location` bırakıldı. `audio` kaldırıldı çünkü uygulama kendisi ses çalmıyor (sistem çaları yönetiyor); gereksiz mod review sorusu çıkarırdı.
+- **Landscape-only:** Info.plist + AppDelegate kilidi. iPad'de de landscape.
+
+### Test notları (Beta App Review / test kullanıcıları için)
+- Uygulama **sadece yatay** çalışır; dikeyde açılmaz (tasarım gereği).
+- Hız göstergesi gerçek GPS ister: test için simülatörde `Features → Location → City Drive`.
+- Müzik widget'ı cihazda Apple Music / arşiv izni ister; simülatörde "Çalan parça yok" normaldir.
+- Harici (public) TestFlight grubu açarsan gizlilik politikası URL'si zorunlu — dahili testte gerekmez.
+
+### Bilinen review riskleri
+- Arka-plan konum (`location` modu): incelemede "neden?" diye sorulabilir. Gerekçe: sürüş sırasında hız takibi. Gerekirse modu Info.plist'ten silip sadece ön-plan konuma düşürebilirsin (hız ibresi arka-planda durur).
+- Ekranı açık tutma (`isIdleTimerDisabled`): kullanıcı tarafından kapatılabilir toggle var, varsayılan açık.
+
 ## Bilinen limitler / sonraki adımlar
 
 - Rota çizimi + turn-by-turn yok (MapKit `MKDirections` ile eklenebilir).

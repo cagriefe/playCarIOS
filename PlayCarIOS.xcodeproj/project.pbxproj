@@ -19,6 +19,7 @@
 		B10000000000000000000010 /* MediaControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MediaControlView.swift */; };
 		B10000000000000000000011 /* TelemetryBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* TelemetryBarView.swift */; };
 		B20000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* Assets.xcassets */; };
+		B20000000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F40000000000000000000001 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +37,7 @@
 		F10000000000000000000011 /* TelemetryBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryBarView.swift; sourceTree = "<group>"; };
 		F20000000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F30000000000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F40000000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +65,7 @@
 				F10000000000000000000001 /* PlayCarIOSApp.swift */,
 				F10000000000000000000002 /* AppDelegate.swift */,
 				F30000000000000000000001 /* Info.plist */,
+				F40000000000000000000001 /* PrivacyInfo.xcprivacy */,
 				F20000000000000000000001 /* Assets.xcassets */,
 				G00000000000000000000004 /* Services */,
 				G00000000000000000000005 /* Views */,
@@ -160,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B20000000000000000000001 /* Assets.xcassets in Resources */,
+				B20000000000000000000002 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

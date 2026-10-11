@@ -46,8 +46,9 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
-		<string>audio</string>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleAllowMixedLocalizations</key>
 	<true/>
 	<key>CFBundleLocalizations</key>

@@ -1,0 +1,143 @@
+import Foundation
+import MediaPlayer
+import UIKit
+import Combine
+
+/// Apple Music / Medya Arşivi kontrolü.
+/// DÜZELTME NOTU (proposal fix):
+/// - Proposal hem MusicKit hem MPMusicPlayerController diyordu. Kafa karışıklığı yaratır.
+///   Bu sürüm sadece MediaPlayer kullanır: sistem çaları yönetir, ek MusicKit entitlement gerekmez.
+/// - Ses seviyesi için custom Slider KULLANILMAZ. iOS'ta sistem sesini Slider ile
+///   değiştirmek (player.volume) deprecated ve App Store'da çalışmaz.
+///   Doğrusu MPVolumeView (sistem ses + AirPlay rotası) kullanmaktır.
+final class MusicPlayerManager: ObservableObject {
+
+    enum AuthState: Equatable {
+        case notDetermined
+        case denied
+        case authorized
+    }
+
+    @Published var authState: AuthState = .notDetermined
+    @Published var isPlaying: Bool = false
+    @Published var title: String = "Çalan parça yok"
+    @Published var artist: String = "—"
+    @Published var artwork: UIImage?
+    @Published var lastError: String?
+
+    private let player = MPMusicPlayerController.systemMusicPlayer
+    private var cancellables = Set<AnyCancellable>()
+
+    init() {
+        syncAuthState()
+        if authState == .authorized {
+            beginObserving()
+        }
+    }
+
+    deinit {
+        endObserving()
+    }
+
+    func requestAuthorization() {
+        lastError = nil
+        MPMediaLibrary.requestAuthorization { [weak self] status in
+            DispatchQueue.main.async {
+                switch status {
+                case .authorized:
+                    self?.authState = .authorized
+                    self?.beginObserving()
+                case .denied, .restricted:
+                    self?.authState = .denied
+                case .notDetermined:
+                    self?.authState = .notDetermined
+                @unknown default:
+                    self?.authState = .notDetermined
+                }
+            }
+        }
+    }
+
+    func togglePlayPause() {
+        guard authState == .authorized else { requestAuthorization(); return }
+        if isPlaying {
+            player.pause()
+        } else {
+            player.play()
+        }
+    }
+
+    func next() {
+        guard authState == .authorized else { return }
+        player.skipToNextItem()
+    }
+
+    func previous() {
+        guard authState == .authorized else { return }
+        player.skipToPreviousItem()
+    }
+
+    // MARK: - Private
+
+    private func syncAuthState() {
+        switch MPMediaLibrary.authorizationStatus() {
+        case .authorized: authState = .authorized
+        case .denied, .restricted: authState = .denied
+        case .notDetermined: authState = .notDetermined
+        @unknown default: authState = .notDetermined
+        }
+        refreshNowPlaying()
+    }
+
+    private func beginObserving() {
+        player.beginGeneratingPlaybackNotifications()
+        refreshNowPlaying()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNowPlayingChanged),
+            name: .MPMusicPlayerControllerNowPlayingItemDidChange,
+            object: player
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePlaybackStateChanged),
+            name: .MPMusicPlayerControllerPlaybackStateDidChange,
+            object: player
+        )
+    }
+
+    private func endObserving() {
+        NotificationCenter.default.removeObserver(self)
+        player.endGeneratingPlaybackNotifications()
+    }
+
+    @objc private func handleNowPlayingChanged() {
+        DispatchQueue.main.async { [weak self] in self?.refreshNowPlaying() }
+    }
+
+    @objc private func handlePlaybackStateChanged() {
+        DispatchQueue.main.async { [weak self] in self?.refreshPlaybackState() }
+    }
+
+    private func refreshPlaybackState() {
+        isPlaying = (player.playbackState == .playing)
+    }
+
+    private func refreshNowPlaying() {
+        refreshPlaybackState()
+        guard let item = player.nowPlayingItem else {
+            title = "Çalan parça yok"
+            artist = "Müzik uygulamasında başlatın"
+            artwork = nil
+            return
+        }
+        title = item.title ?? "Bilinmeyen parça"
+        artist = item.artist ?? "Bilinmeyen sanatçı"
+        if let art = item.artwork {
+            artwork = art.image(at: CGSize(width: 200, height: 200))
+        } else {
+            artwork = nil
+        }
+    }
+}

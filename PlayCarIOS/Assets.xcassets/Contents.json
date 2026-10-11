@@ -1,0 +1,16 @@
+{
+  "assets" : [
+    {
+      "filename" : "AccentColor.colorset",
+      "idiom" : "universal"
+    },
+    {
+      "filename" : "AppIcon.appiconset",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

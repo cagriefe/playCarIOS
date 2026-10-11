@@ -88,7 +88,7 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 10)
+            .padding(.leading, 52)
             .frame(maxHeight: .infinity)
 
             // Seçili yer kartı (sol altta, sağ kartların önünden çekik)
@@ -141,9 +141,9 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 72)
+            .padding(.leading, 116)
             .padding(.trailing, 324)
-            .padding(.bottom, 12)
+            .padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onAppear {
@@ -335,7 +335,7 @@ struct CarMapView: UIViewRepresentable {
         let map = MKMapView(frame: .zero)
         map.delegate = context.coordinator
         map.showsUserLocation = true
-        map.showsCompass = true
+        map.showsCompass = false // üst bardaki kendi pusulamız var; çakışmasın
         map.showsScale = true
         map.showsTraffic = showTraffic
         map.userTrackingMode = .followWithHeading

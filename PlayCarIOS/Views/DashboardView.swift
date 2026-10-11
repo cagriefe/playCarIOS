@@ -34,7 +34,7 @@ struct DashboardView: View {
                 .frame(width: 300)
                 .padding(.trailing, 12)
                 .padding(.top, 46)
-                .padding(.bottom, 12)
+                .padding(.bottom, 24)
             }
         }
         .background(Color.black)
@@ -78,16 +78,17 @@ struct DashboardView: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-            Toggle(isOn: $telemetry.keepScreenOn) {
+            Button {
+                telemetry.keepScreenOn.toggle()
+            } label: {
                 Image(systemName: telemetry.keepScreenOn ? "lock.open.fill" : "lock.fill")
                     .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 24)
             }
-            .labelsHidden()
-            .controlSize(.mini)
-            .tint(.accentColor)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 7)
+        .padding(.vertical, 4)
         .background(.ultraThinMaterial)
     }
 

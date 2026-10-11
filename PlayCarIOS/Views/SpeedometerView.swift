@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Hız göstergesi — km/h (proposal'daki "km/s" hatası düzeltildi).
-/// CLLocation.speed m/s'tir; negatif = geçersiz -> 0 gösterilir.
+/// Kompakt hız göstergesi (km/h).
+/// CLLocation.speed m/s'tir: kmh = max(0, speed * 3.6).
+/// Dar sağ panele taşmadan sığması için sabit genişlik yok,
+/// tüm satırlar lineLimit(1) + minimumScaleFactor ile korunur.
 struct SpeedometerView: View {
     @ObservedObject var location: LocationManager
 
@@ -9,49 +11,54 @@ struct SpeedometerView: View {
     @AppStorage("speedLimitKmh") private var speedLimit: Double = 90
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack {
+        VStack(spacing: 3) {
+            HStack(spacing: 6) {
                 Text("HIZ")
-                    .font(.caption.bold())
+                    .font(.caption2.bold())
                     .foregroundStyle(.secondary)
-                Spacer()
-                Stepper("Limit \(Int(speedLimit))", value: $speedLimit, in: 30...140, step: 5)
-                    .font(.caption)
+                Spacer(minLength: 0)
+                Text("Limit \(Int(speedLimit))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Stepper("", value: $speedLimit, in: 30...140, step: 5)
                     .labelsHidden()
-                Text("\(Int(speedLimit))")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    .controlSize(.small)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(Int(location.speedKmh.rounded()))")
-                    .font(.system(size: 64, weight: .heavy, design: .rounded))
+                    .font(.system(size: 52, weight: .heavy, design: .rounded))
                     .foregroundStyle(speedColor)
                     .monospacedDigit()
-                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 Text("km/h")
-                    .font(.headline)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
             }
 
-            // Minimalist gauge
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(Color.white.opacity(0.12))
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: 3)
                         .fill(speedColor)
                         .frame(width: geo.size.width * gaugeProgress)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 6)
 
             Text(statusText)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(speedColor)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(14)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+        .padding(10)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var gaugeProgress: Double {

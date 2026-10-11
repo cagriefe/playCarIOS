@@ -1,50 +1,58 @@
 import SwiftUI
 
-/// Üst bilgi şeridi: saat, tarih, pil, pusula, ekran-kilit toggle.
+/// Kompakt üst şerit: saat + tarih + pusula + pil + ekran kilidi.
+/// Yatay iPhone'da (~350pt kullanılabilir yükseklik) tek blok ~60pt hedefler,
+/// taşmayı önlemek için tüm metinler lineLimit(1) + esnek Spacer kullanır.
 struct TelemetryBarView: View {
     @ObservedObject var telemetry: TelemetryStore
     @ObservedObject var location: LocationManager
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(telemetry.timeString)
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                 Text(telemetry.dateString)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
+            .frame(minWidth: 60)
 
-            Spacer()
-
-            HStack(spacing: 6) {
-                Image(systemName: "location.north.fill")
-                    .rotationEffect(.degrees(location.headingDegrees))
-                    .font(.headline)
-                Text(location.cardinalDirectionTR)
-                    .font(.headline.bold())
-                    .frame(minWidth: 32)
-            }
-            .foregroundStyle(.primary)
-            .accessibilityLabel("Pusula \(location.cardinalDirectionTR)")
+            Spacer(minLength: 2)
 
             HStack(spacing: 4) {
+                Image(systemName: "location.north.fill")
+                    .rotationEffect(.degrees(location.headingDegrees))
+                    .font(.subheadline)
+                Text(location.cardinalDirectionTR)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+            }
+            .accessibilityLabel("Pusula \(location.cardinalDirectionTR)")
+
+            HStack(spacing: 3) {
                 Image(systemName: batteryIcon)
                     .foregroundStyle(batteryColor)
+                    .font(.caption)
                 Text(telemetry.batteryText)
-                    .font(.subheadline.bold())
+                    .font(.caption.bold())
                     .monospacedDigit()
+                    .lineLimit(1)
             }
 
             Toggle(isOn: $telemetry.keepScreenOn) {
                 Image(systemName: telemetry.keepScreenOn ? "lock.open.fill" : "lock.fill")
             }
             .labelsHidden()
+            .controlSize(.small)
             .tint(.accentColor)
         }
-        .padding(12)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+        .padding(8)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var batteryIcon: String {

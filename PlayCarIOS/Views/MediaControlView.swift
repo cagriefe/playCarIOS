@@ -2,62 +2,60 @@ import SwiftUI
 import MediaPlayer
 import AVKit
 
-/// Medya kontrol widget'ı.
-/// Ses: custom Slider YOK -> MPVolumeView (sistem sesi + AirPlay).
+/// Kompakt medya widget'ı: bilgi satırı + kontrol satırı + ses satırı.
+/// Dar panele taşmadan sığar; tüm metinler lineLimit(1).
 struct MediaControlView: View {
     @ObservedObject var player: MusicPlayerManager
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("MEDYA")
-                .font(.caption.bold())
+                .font(.caption2.bold())
                 .foregroundStyle(.secondary)
 
             if player.authState != .authorized {
-                Button("Müzik Erişimine İzin Ver") {
-                    player.requestAuthorization()
-                }
-                .buttonStyle(.borderedProminent)
-                .font(.subheadline.bold())
-                Text("Parça bilgisi ve kontrol için medya arşivi izni gerekir.")
+                Text("Parça bilgisi için medya izni gerekir.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                Button("İzin Ver") { player.requestAuthorization() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     artworkView
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(player.title)
-                            .font(.headline)
+                            .font(.subheadline.bold())
                             .lineLimit(1)
                         Text(player.artist)
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 16) {
-                    Spacer()
-                    mediaButton(icon: "backward.fill") { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", big: true) {
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    mediaButton(icon: "backward.fill", size: 48) { player.previous() }
+                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 60) {
                         player.togglePlayPause()
                     }
-                    mediaButton(icon: "forward.fill") { player.next() }
-                    Spacer()
+                    mediaButton(icon: "forward.fill", size: 48) { player.next() }
+                    Spacer(minLength: 0)
                 }
 
-                // Sistem sesi + AirPlay (doğru yöntem)
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     SystemVolumeView()
                     AirPlayButtonView()
-                        .frame(width: 32, height: 32)
+                        .frame(width: 30, height: 30)
                 }
-                .frame(height: 32)
+                .frame(height: 28)
             }
         }
-        .padding(14)
-        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+        .padding(10)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
     }
 
@@ -71,25 +69,24 @@ struct MediaControlView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.1))
                     Image(systemName: "music.note")
-                        .font(.title2)
+                        .font(.body)
                         .foregroundStyle(.secondary)
                 }
             }
         }
-        .frame(width: 48, height: 48)
+        .frame(width: 40, height: 40)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private func mediaButton(icon: String, big: Bool = false, action: @escaping () -> Void) -> some View {
+    private func mediaButton(icon: String, size: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: big ? 28 : 22, weight: .semibold))
-                .frame(width: big ? 68 : 56, height: big ? 68 : 56)
+                .font(.system(size: size * 0.38, weight: .semibold))
+                .frame(width: size, height: size)
                 .background(Color.accentColor)
                 .foregroundStyle(.white)
                 .clipShape(Circle())
         }
-        // Sürüş için büyük dokunma hedefi (min 44pt, burada 56-68pt)
     }
 }
 

@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Ana split-screen: sol %60 harita, sağ %40 widget'lar.
 /// Landscape-only (Info.plist + AppDelegate kilidi).
+/// Sağ panel ViewThatFits ile önce sığdırmayı dener, küçük ekranda kaydırır.
+/// Büyük erişilebilirlik puntoları düzeni bozmasın diye üst sınır var.
 struct DashboardView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var musicManager = MusicPlayerManager()
@@ -15,13 +17,11 @@ struct DashboardView: View {
 
                 Divider()
 
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 12) {
-                        TelemetryBarView(telemetry: telemetry, location: locationManager)
-                        SpeedometerView(location: locationManager)
-                        MediaControlView(player: musicManager)
+                ViewThatFits(in: .vertical) {
+                    rightColumn
+                    ScrollView(.vertical, showsIndicators: false) {
+                        rightColumn
                     }
-                    .padding(12)
                 }
                 .frame(width: geo.size.width * 0.4)
                 .background(Color.black)
@@ -29,6 +29,16 @@ struct DashboardView: View {
         }
         .background(Color.black)
         .preferredColorScheme(.dark)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+
+    private var rightColumn: some View {
+        VStack(spacing: 8) {
+            TelemetryBarView(telemetry: telemetry, location: locationManager)
+            SpeedometerView(location: locationManager)
+            MediaControlView(player: musicManager)
+        }
+        .padding(8)
     }
 }
 

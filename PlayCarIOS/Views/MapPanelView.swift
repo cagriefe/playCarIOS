@@ -9,6 +9,7 @@ struct MapPanelView: View {
     @ObservedObject var locationManager: LocationManager
     @StateObject private var searchService = SearchService()
     @StateObject private var favorites = FavoritesStore()
+    @StateObject private var nav = NavigationStore()
     @State private var cameraTarget: CLLocationCoordinate2D?
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
@@ -16,6 +17,7 @@ struct MapPanelView: View {
     @State private var showTraffic = true
     @State private var followUser = true
     @State private var showFavorites = false
+    @State private var overviewRoute: MKRoute?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -26,7 +28,9 @@ struct MapPanelView: View {
                 is3D: is3D,
                 showTraffic: showTraffic,
                 followUser: followUser,
-                favorites: favorites.favorites
+                favorites: favorites.favorites,
+                route: nav.route,
+                overviewRoute: $overviewRoute
             )
             .ignoresSafeArea()
 
@@ -34,6 +38,8 @@ struct MapPanelView: View {
                 SearchBarView(searchService: searchService) { completion in
                     searchService.resolve(completion) { item in
                         guard let item else { return }
+                        nav.stop()
+                        overviewRoute = nil
                         selectedPlace = item
                         selectedSubtitle = completion.subtitle
                         cameraTarget = item.placemark.coordinate
@@ -59,6 +65,9 @@ struct MapPanelView: View {
                     )
                     .padding(.horizontal, 12)
                 }
+
+                navBanner
+                    .padding(.horizontal, 12)
             }
 
             VStack {
@@ -77,6 +86,14 @@ struct MapPanelView: View {
                                     .lineLimit(1)
                             }
                             Spacer(minLength: 0)
+                            Button {
+                                startPreview(for: item)
+                            } label: {
+                                Image(systemName: "car.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 44, height: 44)
+                            }
                             Button {
                                 favorites.add(
                                     name: item.name ?? "Seçili konum",
@@ -131,17 +148,147 @@ struct MapPanelView: View {
         .onChange(of: locationManager.lastLocation?.coordinate.latitude) { _, _ in
             guard let coord = locationManager.lastLocation?.coordinate else { return }
             searchService.updateRegion(around: coord)
+            if let loc = locationManager.lastLocation {
+                nav.updateLocation(loc)
+            }
         }
         .sheet(isPresented: $showFavorites) {
             FavoritesSheetView(
                 favorites: favorites,
                 onGo: { place in
-                    selectedPlace = nil
-                    followUser = false
-                    cameraTarget = place.coordinate
                     showFavorites = false
+                    let item = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
+                    item.name = place.name
+                    nav.stop()
+                    overviewRoute = nil
+                    selectedPlace = item
+                    selectedSubtitle = place.address
+                    followUser = false
+                    if locationManager.lastLocation != nil {
+                        startPreview(for: item)
+                    } else {
+                        cameraTarget = place.coordinate
+                    }
                 }
             )
+        }
+        .onChange(of: nav.phase) { _, phase in
+            if phase == .preview {
+                overviewRoute = nav.route
+            }
+        }
+    }
+
+    private func startPreview(for item: MKMapItem) {
+        guard let loc = locationManager.lastLocation else {
+            nav.lastError = "Önce konum bekleniyor…"
+            return
+        }
+        nav.previewRoute(to: item, from: loc)
+    }
+
+    /// Navigasyon durum kartları (arama çubuğunun altında).
+    @ViewBuilder
+    private var navBanner: some View {
+        switch nav.phase {
+        case .idle:
+            if let err = nav.lastError {
+                Button { nav.lastError = nil } label: {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        Text(err).font(.caption).foregroundStyle(.primary)
+                        Spacer()
+                        Image(systemName: "xmark").font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                }
+            }
+        case .calculating:
+            HStack {
+                ProgressView().scaleEffect(0.8)
+                Text("Rota hesaplanıyor…").font(.caption).foregroundStyle(.primary)
+                Spacer()
+                Button("Vazgeç") { nav.stop() }.font(.caption.bold())
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        case .preview:
+            HStack(spacing: 8) {
+                Image(systemName: "car.fill").foregroundStyle(.blue)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(nav.destinationName).font(.subheadline.bold()).lineLimit(1)
+                    Text("\(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                Button("Başla") {
+                    followUser = true
+                    nav.start()
+                }
+                .font(.subheadline.bold())
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Color.green)
+                .foregroundStyle(.white)
+                .clipShape(Capsule())
+                Button("Kapat") { nav.stop(); overviewRoute = nil }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        case .navigating:
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(nav.nextInstruction.isEmpty ? "Devam edin" : nav.nextInstruction)
+                        .font(.subheadline.bold())
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
+                    Text(NavFormat.distance(nav.nextDistance))
+                        .font(.headline.bold())
+                        .foregroundStyle(.green)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+                HStack(spacing: 8) {
+                    Text("Kalan \(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button {
+                        nav.muted.toggle()
+                    } label: {
+                        Image(systemName: nav.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .font(.caption)
+                            .frame(width: 36, height: 28)
+                    }
+                    Button("Bitir") { nav.stop(); overviewRoute = nil }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.red)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        case .arrived:
+            HStack {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text("Vardınız: \(nav.destinationName)")
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
+                Spacer()
+                Button("Kapat") { nav.stop(); overviewRoute = nil }
+                    .font(.caption.bold())
+            }
+            .padding(10)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 }
@@ -156,6 +303,8 @@ struct CarMapView: UIViewRepresentable {
     var showTraffic: Bool
     var followUser: Bool
     var favorites: [FavoritePlace]
+    var route: MKRoute?
+    @Binding var overviewRoute: MKRoute?
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -196,6 +345,23 @@ struct CarMapView: UIViewRepresentable {
             ann.title = fav.name
             ann.subtitle = fav.address
             map.addAnnotation(ann)
+        }
+
+        // Rota çizgisi
+        map.removeOverlays(map.overlays)
+        if let route {
+            map.addOverlay(route.polyline, level: .aboveRoads)
+        }
+
+        // Önizlemede tüm rotayı kadraja al (tek seferlik)
+        if let overview = overviewRoute {
+            var rect = overview.polyline.boundingMapRect
+            let w = rect.size.width, h = rect.size.height
+            rect = rect.insetBy(dx: -w * 0.25, dy: -h * 0.25)
+            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 80, left: 20, bottom: 20, right: 20), animated: true)
+            DispatchQueue.main.async {
+                overviewRoute = nil
+            }
         }
 
         // Kamera hedefi
@@ -249,6 +415,18 @@ struct CarMapView: UIViewRepresentable {
                 return v
             }
             return nil // seçili yer: varsayılan kırmızı pin + callout
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let line = overlay as? MKPolyline {
+                let r = MKPolylineRenderer(polyline: line)
+                r.strokeColor = .systemBlue
+                r.lineWidth = 6
+                r.lineCap = .round
+                r.lineJoin = .round
+                return r
+            }
+            return MKOverlayRenderer(overlay: overlay)
         }
     }
 }

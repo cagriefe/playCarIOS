@@ -18,6 +18,7 @@ struct MapPanelView: View {
     @State private var followUser = true
     @State private var showFavorites = false
     @State private var overviewRoute: MKRoute?
+    @AppStorage("mapStyleLight") private var mapStyleLight = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -30,7 +31,8 @@ struct MapPanelView: View {
                 followUser: followUser,
                 favorites: favorites.favorites,
                 route: nav.route,
-                overviewRoute: $overviewRoute
+                overviewRoute: $overviewRoute,
+                mapStyleLight: mapStyleLight
             )
             .ignoresSafeArea()
 
@@ -63,8 +65,6 @@ struct MapPanelView: View {
                             onRequest: { locationManager.requestPermission() }
                         )
                     }
-
-                    navBanner
                 }
                 .frame(maxWidth: 340)
                 Spacer(minLength: 0)
@@ -80,6 +80,7 @@ struct MapPanelView: View {
                         railButton(icon: "location.fill", active: followUser, action: recenter)
                         railButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
                         railButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
+                        railButton(icon: mapStyleLight ? "sun.max.fill" : "moon.fill", active: false) { mapStyleLight.toggle() }
                         railButton(icon: "star.fill", active: false) { showFavorites = true }
                     }
                     .padding(6)
@@ -91,9 +92,9 @@ struct MapPanelView: View {
             .padding(.leading, 52)
             .frame(maxHeight: .infinity)
 
-            // Seçili yer kartı (sol altta, sağ kartların önünden çekik)
+            // Seçili yer kartı (sol altta; navigasyon sırasında banner var diye gizlenir)
             HStack(alignment: .bottom) {
-                if let item = selectedPlace {
+                if let item = selectedPlace, nav.phase == .idle {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(item.name ?? "Seçili konum")
@@ -142,6 +143,18 @@ struct MapPanelView: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, 116)
+            .padding(.trailing, 324)
+            .padding(.bottom, 24)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+
+            // Navigasyon şeridi (alt orta): ray ve kartlarla çakışmaz,
+            // sağ kartların solunda ortalanır
+            HStack {
+                Spacer(minLength: 0)
+                navBanner
+                    .frame(maxWidth: 400)
+                Spacer(minLength: 0)
+            }
             .padding(.trailing, 324)
             .padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .bottom)
@@ -330,6 +343,10 @@ struct CarMapView: UIViewRepresentable {
     var favorites: [FavoritePlace]
     var route: MKRoute?
     @Binding var overviewRoute: MKRoute?
+    /// true = açık (gündüz) harita, false = koyu (gece) harita.
+    /// Uygulama koyu temaya zorlu olduğu için harita varsayılanı
+    /// sistemden değil buradan gelir.
+    var mapStyleLight: Bool
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -340,11 +357,13 @@ struct CarMapView: UIViewRepresentable {
         map.showsTraffic = showTraffic
         map.userTrackingMode = .followWithHeading
         map.mapType = .standard
+        map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
         map.showsTraffic = showTraffic
+        map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
 
         if followUser {
             if map.userTrackingMode != .followWithHeading {

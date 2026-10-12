@@ -1,9 +1,10 @@
 import SwiftUI
 
 /// CarPlay Dashboard split düzeni (yatay, katı bölme):
-/// - Sol %65: harita + navigasyon (adeta kendi ekranı, yuvarlak köşeli).
-/// - Sağ %35: hız (üst) + müzik (alt) kartları.
-/// Sağdaki hiçbir widget sol panele taşmaz. Üstte ince global durum çubuğu.
+/// - Sol %65: tam boy harita + navigasyon (yuvarlak köşeli).
+/// - Sağ %35: durum satırı + hız (üst) + müzik (alt, esnek).
+/// Global üst bar yok — harita üst kenara kadar uzar.
+/// Sağdaki hiçbir widget sol panele taşmaz.
 struct DashboardView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var musicManager = MusicPlayerManager()
@@ -12,22 +13,20 @@ struct DashboardView: View {
     var body: some View {
         GeometryReader { geo in
             let contentW = geo.size.width - 24 // 8 padding + 8 spacing
-            VStack(spacing: 0) {
-                statusBar
+            HStack(spacing: 8) {
+                MapPanelView(locationManager: locationManager)
+                    .frame(width: contentW * 0.65)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                HStack(spacing: 8) {
-                    MapPanelView(locationManager: locationManager)
-                        .frame(width: contentW * 0.65)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-
-                    VStack(spacing: 8) {
-                        SpeedometerView(location: locationManager)
-                        MediaControlView(player: musicManager)
+                ViewThatFits(in: .vertical) {
+                    rightColumn
+                    ScrollView(.vertical, showsIndicators: false) {
+                        rightColumn
                     }
-                    .frame(width: contentW * 0.35, alignment: .top)
                 }
-                .padding(8)
+                .frame(width: contentW * 0.35)
             }
+            .padding(8)
         }
         .background(Color.black)
         .ignoresSafeArea()
@@ -35,31 +34,41 @@ struct DashboardView: View {
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
     }
 
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            Text(telemetry.dateString)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            Spacer(minLength: 0)
-            HStack(spacing: 4) {
-                Image(systemName: "location.north.fill")
-                    .rotationEffect(.degrees(locationManager.headingDegrees))
-                    .font(.caption)
-                Text(locationManager.cardinalDirectionTR)
-                    .font(.caption.bold())
-                    .lineLimit(1)
-            }
+    private var rightColumn: some View {
+        VStack(spacing: 8) {
+            miniStatus
+            SpeedometerView(location: locationManager)
+            MediaControlView(player: musicManager)
+        }
+    }
+
+    /// Sağ panele sığan tek satırlık durum: saat + tarih + pusula + pil + kilit.
+    private var miniStatus: some View {
+        HStack(spacing: 6) {
             Text(telemetry.timeString)
                 .font(.subheadline.bold())
                 .monospacedDigit()
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(telemetry.dateString)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer(minLength: 2)
             HStack(spacing: 3) {
+                Image(systemName: "location.north.fill")
+                    .rotationEffect(.degrees(locationManager.headingDegrees))
+                    .font(.caption2)
+                Text(locationManager.cardinalDirectionTR)
+                    .font(.caption2.bold())
+                    .lineLimit(1)
+            }
+            HStack(spacing: 2) {
                 Image(systemName: batteryIcon)
                     .font(.caption2)
                     .foregroundStyle(telemetry.batteryLevel < 0.2 ? .red : .green)
                 Text(telemetry.batteryText)
-                    .font(.caption.bold())
+                    .font(.caption2.bold())
                     .monospacedDigit()
                     .lineLimit(1)
             }
@@ -69,12 +78,12 @@ struct DashboardView: View {
                 Image(systemName: telemetry.keepScreenOn ? "lock.open.fill" : "lock.fill")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 24)
+                    .frame(width: 28, height: 22)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 4)
-        .background(Color.black.opacity(0.6))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var batteryIcon: String {

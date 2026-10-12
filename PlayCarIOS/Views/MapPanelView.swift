@@ -50,6 +50,7 @@ struct MapPanelView: View {
             .ignoresSafeArea()
 
             HStack(alignment: .top, spacing: 8) {
+                Spacer(minLength: 0)
                 VStack(spacing: 8) {
                     SearchBarView(searchService: searchService) { completion in
                         searchService.resolve(completion) { item in
@@ -82,7 +83,7 @@ struct MapPanelView: View {
                     // Turn-by-turn kartı: sol panelin üstünde, arama altında sabit
                     navBanner
                 }
-                .frame(maxWidth: 340)
+                .frame(maxWidth: 380)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)
@@ -93,15 +94,15 @@ struct MapPanelView: View {
             // Sol ikon rayı (CarPlay sidebar): dikey ortalı yüzen hap
             HStack {
                 VStack {
-                    Spacer(minLength: 0)
-                    VStack(spacing: 6) {
+                    Spacer(minLength: 76)
+                    VStack(spacing: 5) {
                         railButton(icon: "location.fill", active: followUser, action: recenter)
                         railButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
                         railButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
                         railButton(icon: mapStyleLight ? "sun.max.fill" : "moon.fill", active: false) { mapStyleLight.toggle() }
                         railButton(icon: "star.fill", active: false) { showFavorites = true }
                     }
-                    .padding(6)
+                    .padding(5)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
                     Spacer(minLength: 0)
                 }
@@ -278,8 +279,8 @@ struct MapPanelView: View {
             action()
         }) {
             Image(systemName: icon)
-                .font(.system(size: 19, weight: .semibold))
-                .frame(width: 46, height: 46)
+                .font(.system(size: 18, weight: .semibold))
+                .frame(width: 44, height: 44)
                 .background(active ? Color.accentColor : Color.white.opacity(0.12))
                 .foregroundStyle(.white)
                 .clipShape(Circle())
@@ -428,6 +429,9 @@ struct CarMapView: UIViewRepresentable {
         map.userTrackingMode = .followWithHeading
         map.mapType = .standard
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
+        // Eğiklik kilidi: sadece 3D modunda parmakla yatırılabilir.
+        // Böylece tüm zoom/pinch hareketleri 2D tepeden olur.
+        map.isPitchEnabled = is3D
         let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
         tap.cancelsTouchesInView = false
         map.addGestureRecognizer(tap)
@@ -440,6 +444,7 @@ struct CarMapView: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         map.showsTraffic = showTraffic
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
+        map.isPitchEnabled = is3D
 
         if isNavigating, let user = userLocation {
             // Sürüş kamerası: tam manuel kontrol, baş yönü + 3D pitch + sabit yakınlık
@@ -465,6 +470,12 @@ struct CarMapView: UIViewRepresentable {
             }
         } else {
             context.coordinator.lastNavCenter = nil
+            // Navigasyon bitti / 2D mod: eğiklik sıfırlanır (örn. nav sonrası 55° pitch).
+            if !is3D && map.camera.pitch != 0 {
+                var cam = map.camera
+                cam.pitch = 0
+                map.setCamera(cam, animated: true)
+            }
             if followUser {
                 if map.userTrackingMode != .followWithHeading {
                     map.setUserTrackingMode(.followWithHeading, animated: true)

@@ -18,6 +18,29 @@ final class MusicPlayerManager: ObservableObject {
         case authorized
     }
 
+    /// Parça sıralaması (Türkçe etiketli).
+    enum TrackSort: String, CaseIterable {
+        case dateAddedDesc
+        case titleAZ
+        case artistAZ
+
+        var title: String {
+            switch self {
+            case .dateAddedDesc: return "Eklenme Tarihi (Yeniler)"
+            case .titleAZ: return "İsim (A-Z)"
+            case .artistAZ: return "Sanatçı (A-Z)"
+            }
+        }
+
+        var shortTitle: String {
+            switch self {
+            case .dateAddedDesc: return "Tarih"
+            case .titleAZ: return "İsim"
+            case .artistAZ: return "Sanatçı"
+            }
+        }
+    }
+
     @Published var authState: AuthState = .notDetermined
     @Published var isPlaying: Bool = false
     @Published var title: String = "Çalan parça yok"
@@ -25,6 +48,10 @@ final class MusicPlayerManager: ObservableObject {
     @Published var artwork: UIImage?
     @Published var playlists: [MPMediaPlaylist] = []
     @Published var progress: Double = 0
+    @Published var nowPlayingID: UInt64 = 0
+    @Published var currentTracks: [MPMediaItem] = []
+    @Published var currentPlaylist: MPMediaPlaylist?
+    @Published var trackSort: TrackSort = .dateAddedDesc
     @Published var lastError: String?
 
     private let player = MPMusicPlayerController.systemMusicPlayer
@@ -100,6 +127,55 @@ final class MusicPlayerManager: ObservableObject {
         refreshNowPlaying()
     }
 
+    /// Seçili listenin parçalarını asenkron yükler + mevcut sıralamayı uygular.
+    func loadTracks(for playlist: MPMediaPlaylist) {
+        guard authState == .authorized else { return }
+        currentPlaylist = playlist
+        currentTracks = []
+        let sort = trackSort
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let items = playlist.items
+            guard let self else { return }
+            let ordered = self.applySort(items, by: sort)
+            DispatchQueue.main.async { self.currentTracks = ordered }
+        }
+    }
+
+    /// Sıralamayı değiştirir, yüklü listeyi yeniden dizer.
+    func setSort(_ sort: TrackSort) {
+        trackSort = sort
+        guard let list = currentPlaylist else { return }
+        currentTracks = applySort(list.items, by: sort)
+    }
+
+    /// Tek parçayı çal: listeyi sıraya koy, ilgili parçadan başlat.
+    func playTrack(_ item: MPMediaItem, in playlist: MPMediaPlaylist) {
+        guard authState == .authorized else { return }
+        player.setQueue(with: playlist)
+        player.nowPlayingItem = item
+        player.play()
+        refreshNowPlaying()
+    }
+
+    /// Varsayılan: eklenme tarihi azalan (Apple Music davranışı).
+    /// Tarihi eksik parçalar en alta düşer, liste bozulmaz.
+    private func applySort(_ items: [MPMediaItem], by sort: TrackSort) -> [MPMediaItem] {
+        switch sort {
+        case .dateAddedDesc:
+            return items.sorted {
+                ($0.dateAdded ?? .distantPast) > ($1.dateAdded ?? .distantPast)
+            }
+        case .titleAZ:
+            return items.sorted {
+                ($0.title ?? "").localizedCaseInsensitiveCompare($1.title ?? "") == .orderedAscending
+            }
+        case .artistAZ:
+            return items.sorted {
+                ($0.artist ?? "").localizedCaseInsensitiveCompare($1.artist ?? "") == .orderedAscending
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func syncAuthState() {
@@ -168,6 +244,7 @@ final class MusicPlayerManager: ObservableObject {
     private func refreshNowPlaying() {
         refreshPlaybackState()
         updateProgress()
+        nowPlayingID = player.nowPlayingItem?.persistentID ?? 0
         guard let item = player.nowPlayingItem else {
             title = "Çalan parça yok"
             artist = "Müzik uygulamasında başlatın"

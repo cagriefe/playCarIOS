@@ -58,6 +58,7 @@ final class NavigationStore: ObservableObject {
         guard phase == .preview, let steps = route?.steps else { return }
         currentStepIndex = steps.firstIndex(where: { $0.distance > 0 }) ?? 0
         phase = .navigating
+        configureAudioSession()
         announceCurrentStep()
     }
 
@@ -65,6 +66,7 @@ final class NavigationStore: ObservableObject {
         activeRequest?.cancel()
         activeRequest = nil
         speaker.stopSpeaking(at: .immediate)
+        releaseAudioSession()
         route = nil
         if clearDestination { destination = nil; destinationName = "" }
         currentStepIndex = 0
@@ -172,6 +174,23 @@ final class NavigationStore: ObservableObject {
         utterance.voice = AVSpeechSynthesisVoice(language: "tr-TR")
         utterance.rate = 0.52
         speaker.speak(utterance)
+    }
+
+    /// Sesli yönlendirme müziği DURDURMASIN diye: konuşma sırasında
+    /// diğer sesi kısmaya (duck) izin veren oturum. Ayarlanmazsa
+    /// varsayılan soloAmbient müziği keser.
+    private func configureAudioSession() {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playback, options: [.duckOthers])
+            try session.setActive(true)
+        } catch {
+            lastError = "Ses çıkışı ayarlanamadı."
+        }
+    }
+
+    private func releaseAudioSession() {
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
     // MARK: - Mesafe yardımcıları

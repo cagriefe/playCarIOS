@@ -144,6 +144,7 @@ struct MediaControlView: View {
                                 .padding(.horizontal, 4)
                                 .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .frame(minHeight: 54)
                         }
                     }
@@ -212,6 +213,7 @@ struct MediaControlView: View {
                                 .padding(.horizontal, 4)
                                 .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .frame(minHeight: 52)
                         }
                     }

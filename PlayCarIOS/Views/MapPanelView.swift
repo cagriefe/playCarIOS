@@ -19,6 +19,7 @@ struct MapPanelView: View {
     @State private var showFavorites = false
     @State private var overviewRoute: MKRoute?
     @State private var initialCenter: CLLocationCoordinate2D?
+    @State private var navStartCenter: CLLocationCoordinate2D?
     @State private var didInitialZoom = false
     @AppStorage("mapStyleLight") private var mapStyleLight = false
     /// Sürüş modu: 4 sn işlemsizlikte ray + arama gizlenir (temiz harita).
@@ -42,8 +43,7 @@ struct MapPanelView: View {
                 overviewRoute: $overviewRoute,
                 initialCenter: $initialCenter,
                 mapStyleLight: mapStyleLight,
-                isNavigating: nav.phase == .navigating,
-                heading: locationManager.headingDegrees,
+                navStartCenter: $navStartCenter,
                 tapTick: $mapTapTick,
                 panTick: $mapPanTick
             )
@@ -326,6 +326,9 @@ struct MapPanelView: View {
                 Spacer(minLength: 0)
                 Button("Başla") {
                     followUser = true
+                    if let coord = locationManager.lastLocation?.coordinate {
+                        navStartCenter = coord
+                    }
                     nav.start()
                 }
                 .font(.subheadline.bold())
@@ -412,10 +415,9 @@ struct CarMapView: UIViewRepresentable {
     /// Uygulama koyu temaya zorlu olduğu için harita varsayılanı
     /// sistemden değil buradan gelir.
     var mapStyleLight: Bool
-    /// Aktif navigasyonda kamera manuel sürüş görünümüne geçer
-    /// (baş yönü + 55° pitch + yakın zoom, zoom-out yok).
-    var isNavigating: Bool
-    var heading: Double
+    /// Navigasyon Başla'da bir kez uygulanan 2D yakın zoom (500 m, pitch 0).
+    /// Sonrası normal takip: 2D + baş yönü, zoom kullanıcıda.
+    @Binding var navStartCenter: CLLocationCoordinate2D?
     @Binding var tapTick: Int
     @Binding var panTick: Int
 
@@ -446,44 +448,13 @@ struct CarMapView: UIViewRepresentable {
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
         map.isPitchEnabled = is3D
 
-        if isNavigating, let user = userLocation {
-            // Sürüş kamerası: tam manuel kontrol, baş yönü + 3D pitch + sabit yakınlık
-            if map.userTrackingMode != .none {
-                map.setUserTrackingMode(.none, animated: false)
-            }
-            let moved: Bool = {
-                guard let last = context.coordinator.lastNavCenter else { return true }
-                let d = CLLocation(latitude: user.latitude, longitude: user.longitude)
-                    .distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude))
-                return d > 12 || abs(heading - context.coordinator.lastNavHeading) > 6
-            }()
-            if moved {
-                let camera = MKMapCamera(
-                    lookingAtCenter: user,
-                    fromDistance: 550,
-                    pitch: 55,
-                    heading: heading
-                )
-                map.setCamera(camera, animated: true)
-                context.coordinator.lastNavCenter = user
-                context.coordinator.lastNavHeading = heading
+        if followUser {
+            if map.userTrackingMode != .followWithHeading {
+                map.setUserTrackingMode(.followWithHeading, animated: true)
             }
         } else {
-            context.coordinator.lastNavCenter = nil
-            // Navigasyon bitti / 2D mod: eğiklik sıfırlanır (örn. nav sonrası 55° pitch).
-            if !is3D && map.camera.pitch != 0 {
-                var cam = map.camera
-                cam.pitch = 0
-                map.setCamera(cam, animated: true)
-            }
-            if followUser {
-                if map.userTrackingMode != .followWithHeading {
-                    map.setUserTrackingMode(.followWithHeading, animated: true)
-                }
-            } else {
-                if map.userTrackingMode != .none {
-                    map.setUserTrackingMode(.none, animated: true)
-                }
+            if map.userTrackingMode != .none {
+                map.setUserTrackingMode(.none, animated: true)
             }
         }
 
@@ -543,6 +514,18 @@ struct CarMapView: UIViewRepresentable {
             DispatchQueue.main.async {
                 initialCenter = nil
             }
+        } else if let start = navStartCenter {
+            // Navigasyon Başla: 2D tepeden yakın zoom (pitch hep 0)
+            let camera = MKMapCamera(
+                lookingAtCenter: start,
+                fromDistance: 500,
+                pitch: 0,
+                heading: 0
+            )
+            map.setCamera(camera, animated: true)
+            DispatchQueue.main.async {
+                navStartCenter = nil
+            }
         } else if is3D != context.coordinator.last3D {
             // Sadece 2D/3D değişiminde pitch güncelle
             var cam = map.camera
@@ -561,8 +544,6 @@ struct CarMapView: UIViewRepresentable {
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var last3D = false
-        var lastNavCenter: CLLocationCoordinate2D?
-        var lastNavHeading: Double = 0
         var onTap: (() -> Void)?
         var onPan: (() -> Void)?
 
@@ -677,6 +658,7 @@ struct SearchBarView: View {
                                     .padding(.vertical, 8)
                                     .padding(.horizontal, 12)
                                 }
+                                .buttonStyle(.plain)
                                 // Satır içi favoriye ekle (Maps'teki gibi)
                                 Button { onSave(c) } label: {
                                     Image(systemName: "star")

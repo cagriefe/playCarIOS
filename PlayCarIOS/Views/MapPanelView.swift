@@ -19,6 +19,12 @@ struct MapPanelView: View {
     @State private var showFavorites = false
     @State private var overviewRoute: MKRoute?
     @AppStorage("mapStyleLight") private var mapStyleLight = false
+    /// Sürüş modu: 4 sn işlemsizlikte ray + arama gizlenir (temiz harita).
+    /// Navigasyon kartı ve seçili yer kartı her zaman görünür (güvenlik).
+    @State private var controlsVisible = true
+    @State private var hideTimer: Timer?
+    @State private var mapTapTick = 0
+    @State private var mapPanTick = 0
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -32,7 +38,11 @@ struct MapPanelView: View {
                 favorites: favorites.favorites,
                 route: nav.route,
                 overviewRoute: $overviewRoute,
-                mapStyleLight: mapStyleLight
+                mapStyleLight: mapStyleLight,
+                isNavigating: nav.phase == .navigating,
+                heading: locationManager.headingDegrees,
+                tapTick: $mapTapTick,
+                panTick: $mapPanTick
             )
             .ignoresSafeArea()
 
@@ -65,12 +75,17 @@ struct MapPanelView: View {
                             onRequest: { locationManager.requestPermission() }
                         )
                     }
+
+                    // Turn-by-turn kartı: sol panelin üstünde, arama altında sabit
+                    navBanner
                 }
                 .frame(maxWidth: 340)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)
-            .padding(.top, 46) // üst durum çubuğunun altında
+            .padding(.top, 12)
+            .opacity(controlsVisible ? 1 : 0)
+            .allowsHitTesting(controlsVisible)
 
             // Sol ikon rayı (CarPlay sidebar): dikey ortalı yüzen hap
             HStack {
@@ -89,8 +104,10 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 52)
+            .padding(.leading, 36)
             .frame(maxHeight: .infinity)
+            .opacity(controlsVisible ? 1 : 0)
+            .allowsHitTesting(controlsVisible)
 
             // Seçili yer kartı (sol altta; navigasyon sırasında banner var diye gizlenir)
             HStack(alignment: .bottom) {
@@ -142,32 +159,43 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 116)
-            .padding(.trailing, 324)
-            .padding(.bottom, 24)
-            .frame(maxHeight: .infinity, alignment: .bottom)
-
-            // Navigasyon şeridi (alt orta): ray ve kartlarla çakışmaz,
-            // sağ kartların solunda ortalanır
-            HStack {
-                Spacer(minLength: 0)
-                navBanner
-                    .frame(maxWidth: 400)
-                Spacer(minLength: 0)
-            }
-            .padding(.trailing, 324)
+            .padding(.leading, 104)
+            .padding(.trailing, 12)
             .padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onAppear {
             locationManager.requestPermission()
             locationManager.startTracking()
+            pokeControls()
+        }
+        .onDisappear {
+            hideTimer?.invalidate()
         }
         .onChange(of: locationManager.lastLocation?.coordinate.latitude) { _, _ in
             guard let coord = locationManager.lastLocation?.coordinate else { return }
             searchService.updateRegion(around: coord)
             if let loc = locationManager.lastLocation {
                 nav.updateLocation(loc)
+            }
+        }
+        .onChange(of: mapTapTick) {
+            toggleControls()
+        }
+        .onChange(of: mapPanTick) {
+            // Kullanıcı haritayı elle kaydırdı: takibi bırak, kontrolleri göster
+            followUser = false
+            pokeControls()
+        }
+        .onChange(of: searchService.query) {
+            pokeControls()
+        }
+        .onChange(of: showFavorites) { _, shown in
+            if shown {
+                hideTimer?.invalidate()
+                controlsVisible = true
+            } else {
+                pokeControls()
             }
         }
         .sheet(isPresented: $showFavorites) {
@@ -194,7 +222,28 @@ struct MapPanelView: View {
             if phase == .preview {
                 overviewRoute = nav.route
             }
+            if phase == .idle {
+                // Navigasyon bitti: takibe dön
+                followUser = true
+            }
+            pokeControls()
         }
+    }
+
+    /// Kontrolleri göster + 4 sn sonra otomatik gizle (temiz sürüş görünümü).
+    /// @State atamaları non-mutating setter kullanır, escaping closure'dan çağrılabilir.
+    private func pokeControls() {
+        controlsVisible = true
+        hideTimer?.invalidate()
+        hideTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { _ in
+            withAnimation(.easeInOut(duration: 0.25)) { controlsVisible = false }
+        }
+    }
+
+    private func toggleControls() {
+        hideTimer?.invalidate()
+        withAnimation(.easeInOut(duration: 0.25)) { controlsVisible.toggle() }
+        if controlsVisible { pokeControls() }
     }
 
     private func startPreview(for item: MKMapItem) {
@@ -214,8 +263,12 @@ struct MapPanelView: View {
     }
 
     /// Sol ray butonu: CarPlay sidebar tarzı yuvarlak dokunmatik hedef.
+    /// Her dokunuş gizleme sayacını sıfırlar.
     private func railButton(icon: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button(action: {
+            pokeControls()
+            action()
+        }) {
             Image(systemName: icon)
                 .font(.system(size: 19, weight: .semibold))
                 .frame(width: 46, height: 46)
@@ -347,6 +400,12 @@ struct CarMapView: UIViewRepresentable {
     /// Uygulama koyu temaya zorlu olduğu için harita varsayılanı
     /// sistemden değil buradan gelir.
     var mapStyleLight: Bool
+    /// Aktif navigasyonda kamera manuel sürüş görünümüne geçer
+    /// (baş yönü + 55° pitch + yakın zoom, zoom-out yok).
+    var isNavigating: Bool
+    var heading: Double
+    @Binding var tapTick: Int
+    @Binding var panTick: Int
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -358,6 +417,12 @@ struct CarMapView: UIViewRepresentable {
         map.userTrackingMode = .followWithHeading
         map.mapType = .standard
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
+        tap.cancelsTouchesInView = false
+        map.addGestureRecognizer(tap)
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        pan.cancelsTouchesInView = false
+        map.addGestureRecognizer(pan)
         return map
     }
 
@@ -365,13 +430,38 @@ struct CarMapView: UIViewRepresentable {
         map.showsTraffic = showTraffic
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
 
-        if followUser {
-            if map.userTrackingMode != .followWithHeading {
-                map.setUserTrackingMode(.followWithHeading, animated: true)
+        if isNavigating, let user = userLocation {
+            // Sürüş kamerası: tam manuel kontrol, baş yönü + 3D pitch + sabit yakınlık
+            if map.userTrackingMode != .none {
+                map.setUserTrackingMode(.none, animated: false)
+            }
+            let moved: Bool = {
+                guard let last = context.coordinator.lastNavCenter else { return true }
+                let d = CLLocation(latitude: user.latitude, longitude: user.longitude)
+                    .distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude))
+                return d > 12 || abs(heading - context.coordinator.lastNavHeading) > 6
+            }()
+            if moved {
+                let camera = MKMapCamera(
+                    lookingAtCenter: user,
+                    fromDistance: 550,
+                    pitch: 55,
+                    heading: heading
+                )
+                map.setCamera(camera, animated: true)
+                context.coordinator.lastNavCenter = user
+                context.coordinator.lastNavHeading = heading
             }
         } else {
-            if map.userTrackingMode != .none {
-                map.setUserTrackingMode(.none, animated: true)
+            context.coordinator.lastNavCenter = nil
+            if followUser {
+                if map.userTrackingMode != .followWithHeading {
+                    map.setUserTrackingMode(.followWithHeading, animated: true)
+                }
+            } else {
+                if map.userTrackingMode != .none {
+                    map.setUserTrackingMode(.none, animated: true)
+                }
             }
         }
 
@@ -391,9 +481,11 @@ struct CarMapView: UIViewRepresentable {
             map.addAnnotation(ann)
         }
 
-        // Rota çizgisi
+        // Rota çizgisi: beyaz zemin + mavi hat (yüksek kontrast)
         map.removeOverlays(map.overlays)
         if let route {
+            let casing = RouteCasingPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
+            map.addOverlay(casing, level: .aboveRoads)
             map.addOverlay(route.polyline, level: .aboveRoads)
         }
 
@@ -441,11 +533,24 @@ struct CarMapView: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        let c = Coordinator()
+        c.onTap = { self.tapTick += 1 }
+        c.onPan = { self.panTick += 1 }
+        return c
     }
 
     final class Coordinator: NSObject, MKMapViewDelegate {
         var last3D = false
+        var lastNavCenter: CLLocationCoordinate2D?
+        var lastNavHeading: Double = 0
+        var onTap: (() -> Void)?
+        var onPan: (() -> Void)?
+
+        @objc func handleTap() { onTap?() }
+
+        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+            if gesture.state == .began { onPan?() }
+        }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             if annotation is MKUserLocation { return nil }
@@ -462,10 +567,19 @@ struct CarMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if overlay is RouteCasingPolyline, let line = overlay as? MKPolyline {
+                let r = MKPolylineRenderer(polyline: line)
+                r.strokeColor = .white
+                r.lineWidth = 11
+                r.lineCap = .round
+                r.lineJoin = .round
+                r.alpha = 0.9
+                return r
+            }
             if let line = overlay as? MKPolyline {
                 let r = MKPolylineRenderer(polyline: line)
                 r.strokeColor = .systemBlue
-                r.lineWidth = 6
+                r.lineWidth = 7
                 r.lineCap = .round
                 r.lineJoin = .round
                 return r
@@ -474,6 +588,9 @@ struct CarMapView: UIViewRepresentable {
         }
     }
 }
+
+/// Rota beyaz zemini: mavi hattın altında daha kalın beyaz çizgi.
+final class RouteCasingPolyline: MKPolyline {}
 
 // MARK: - Arama çubuğu
 

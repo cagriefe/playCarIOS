@@ -1,53 +1,38 @@
 import SwiftUI
 
-/// CarPlay Dashboard düzeni:
-/// - Tam ekran harita (arka plan),
-/// - Üstte ince durum çubuğu (tarih • saat • pusula • pil),
-/// - Sağda harita üstünde yüzen kartlar (hız + müzik).
-/// Siyah paneller yok, bölme çizgisi yok — her şey haritanın üstünde yüzer.
+/// CarPlay Dashboard split düzeni (yatay, katı bölme):
+/// - Sol %65: harita + navigasyon (adeta kendi ekranı, yuvarlak köşeli).
+/// - Sağ %35: hız (üst) + müzik (alt) kartları.
+/// Sağdaki hiçbir widget sol panele taşmaz. Üstte ince global durum çubuğu.
 struct DashboardView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var musicManager = MusicPlayerManager()
     @StateObject private var telemetry = TelemetryStore()
 
     var body: some View {
-        ZStack {
-            MapPanelView(locationManager: locationManager)
-                .ignoresSafeArea()
-
-            // Üst durum çubuğu (CarPlay status bar)
-            VStack {
+        GeometryReader { geo in
+            let contentW = geo.size.width - 36 // 12 padding + 12 spacing
+            VStack(spacing: 0) {
                 statusBar
-                Spacer(minLength: 0)
-            }
-            .ignoresSafeArea(edges: .top)
 
-            // Sağda yüzen kartlar
-            HStack {
-                Spacer(minLength: 0)
-                ViewThatFits(in: .vertical) {
-                    rightCards
-                    ScrollView(.vertical, showsIndicators: false) {
-                        rightCards
+                HStack(spacing: 12) {
+                    MapPanelView(locationManager: locationManager)
+                        .frame(width: contentW * 0.65)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                    VStack(spacing: 10) {
+                        SpeedometerView(location: locationManager)
+                        MediaControlView(player: musicManager)
                     }
+                    .frame(width: contentW * 0.35, alignment: .top)
                 }
-                .frame(width: 300)
-                .padding(.trailing, 12)
-                .padding(.top, 46)
-                .padding(.bottom, 24)
+                .padding(12)
             }
         }
         .background(Color.black)
+        .ignoresSafeArea()
         .preferredColorScheme(.dark)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-    }
-
-    private var rightCards: some View {
-        VStack(spacing: 10) {
-            SpeedometerView(location: locationManager)
-            MediaControlView(player: musicManager)
-            Spacer(minLength: 0)
-        }
     }
 
     private var statusBar: some View {
@@ -89,7 +74,7 @@ struct DashboardView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 4)
-        .background(.ultraThinMaterial)
+        .background(Color.black.opacity(0.6))
     }
 
     private var batteryIcon: String {

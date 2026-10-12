@@ -59,7 +59,7 @@ struct MediaControlView: View {
             }
         }
         .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
         .sheet(isPresented: $showPlaylists) {
             PlaylistsSheetView(player: player)

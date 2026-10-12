@@ -10,6 +10,7 @@ struct MapPanelView: View {
     @StateObject private var searchService = SearchService()
     @StateObject private var favorites = FavoritesStore()
     @StateObject private var nav = NavigationStore()
+    @StateObject private var callStore = CallStore()
     @State private var cameraTarget: CLLocationCoordinate2D?
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
@@ -170,6 +171,61 @@ struct MapPanelView: View {
             .padding(.trailing, 12)
             .padding(.bottom, 24)
             .frame(maxHeight: .infinity, alignment: .bottom)
+
+            // Telefon araması kartı: sadece harita panelinde (medya hariç),
+            // süre + gizleme. Aramayı bitirme iOS'ta uygulamaya kapalı.
+            if callStore.inCall && !callStore.dismissed {
+                HStack {
+                    Spacer(minLength: 0)
+                    VStack {
+                        Spacer(minLength: 0)
+                        VStack(spacing: 10) {
+                            Image(systemName: "phone.circle.fill")
+                                .font(.system(size: 48))
+                                .foregroundStyle(.green)
+                            Text("Arama Sürüyor")
+                                .font(.headline)
+                            Text(callStore.elapsedText)
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                            Text("Bitirmek için iPhone çağrı ekranını kullanın")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("Gizle") { callStore.hide() }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                                .frame(minWidth: 140, minHeight: 48)
+                        }
+                        .padding(24)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                        .frame(maxWidth: 320)
+                        Spacer(minLength: 0)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxHeight: .infinity)
+            } else if callStore.inCall {
+                HStack {
+                    Spacer(minLength: 0)
+                    Button { callStore.show() } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "phone.fill")
+                            Text(callStore.elapsedText)
+                                .monospacedDigit()
+                        }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.green)
+                        .foregroundStyle(.white)
+                        .clipShape(Capsule())
+                    }
+                }
+                .padding(.trailing, 12)
+                .padding(.bottom, 24)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+            }
         }
         .onAppear {
             locationManager.requestPermission()

@@ -15,6 +15,7 @@
 		B10000000000000000000006 /* TelemetryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* TelemetryStore.swift */; };
 		B10000000000000000000012 /* FavoritesStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000012 /* FavoritesStore.swift */; };
 		B10000000000000000000013 /* NavigationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* NavigationStore.swift */; };
+		B10000000000000000000014 /* CallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* CallStore.swift */; };
 		B10000000000000000000007 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* DashboardView.swift */; };
 		B10000000000000000000008 /* MapPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* MapPanelView.swift */; };
 		B10000000000000000000009 /* SpeedometerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* SpeedometerView.swift */; };
@@ -33,6 +34,7 @@
 		F10000000000000000000006 /* TelemetryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryStore.swift; sourceTree = "<group>"; };
 		F10000000000000000000012 /* FavoritesStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesStore.swift; sourceTree = "<group>"; };
 		F10000000000000000000013 /* NavigationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000014 /* CallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallStore.swift; sourceTree = "<group>"; };
 		F10000000000000000000007 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		F10000000000000000000008 /* MapPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapPanelView.swift; sourceTree = "<group>"; };
 		F10000000000000000000009 /* SpeedometerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedometerView.swift; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 				F10000000000000000000006 /* TelemetryStore.swift */,
 				F10000000000000000000012 /* FavoritesStore.swift */,
 				F10000000000000000000013 /* NavigationStore.swift */,
+				F10000000000000000000014 /* CallStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -185,6 +188,7 @@
 				B10000000000000000000006 /* TelemetryStore.swift in Sources */,
 				B10000000000000000000012 /* FavoritesStore.swift in Sources */,
 				B10000000000000000000013 /* NavigationStore.swift in Sources */,
+				B10000000000000000000014 /* CallStore.swift in Sources */,
 				B10000000000000000000007 /* DashboardView.swift in Sources */,
 				B10000000000000000000008 /* MapPanelView.swift in Sources */,
 				B10000000000000000000009 /* SpeedometerView.swift in Sources */,

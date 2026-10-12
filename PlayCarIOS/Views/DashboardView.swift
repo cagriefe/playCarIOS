@@ -80,6 +80,10 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 28, height: 22)
             }
+            // Derleme etiketi: ekrandan hangi sürümün çalıştığını doğrula
+            Text("b12")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

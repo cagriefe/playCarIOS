@@ -28,7 +28,7 @@ struct MediaControlView: View {
                 tracksView
             }
         }
-        .padding(10)
+        .padding(14)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .animation(.easeInOut(duration: 0.2), value: panelState)
@@ -38,7 +38,7 @@ struct MediaControlView: View {
     // MARK: - Şimdi çalınıyor
 
     private var nowPlayingView: some View {
-        Group {
+        VStack(spacing: 8) {
             HStack(spacing: 6) {
                 Text("MEDYA")
                     .font(.caption2.bold())
@@ -63,6 +63,7 @@ struct MediaControlView: View {
                     .controlSize(.small)
                 Spacer(minLength: 0)
             } else {
+                // 1. Parça bilgisi
                 HStack(spacing: 10) {
                     artworkView
                     VStack(alignment: .leading, spacing: 1) {
@@ -77,15 +78,10 @@ struct MediaControlView: View {
                     Spacer(minLength: 0)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
-                // İleri/geri sarma: kalın bar + süreler, sürükle-bırak
-                HStack(spacing: 8) {
-                    Text(TrackFormat.duration(displayElapsed))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
+                // 2. Ortalanmış ilerleme bölümü (bar üstte, süreler altta)
+                VStack(spacing: 4) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
@@ -111,26 +107,31 @@ struct MediaControlView: View {
                         )
                     }
                     .frame(height: 26)
-                    Text("-\(TrackFormat.duration(max(player.duration - displayElapsed, 0)))")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
+                    HStack {
+                        Text(TrackFormat.duration(displayElapsed))
+                        Spacer()
+                        Text("-\(TrackFormat.duration(max(player.duration - displayElapsed, 0)))")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
-                HStack(spacing: 14) {
+                // 3. Kontroller (taşmayı önlemek için kompakt: 50/44)
+                HStack(spacing: 24) {
                     Spacer(minLength: 0)
-                    mediaButton(icon: "backward.fill", size: 50) { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 64) {
+                    mediaButton(icon: "backward.fill", size: 44) { player.previous() }
+                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 50) {
                         player.togglePlayPause()
                     }
-                    mediaButton(icon: "forward.fill", size: 50) { player.next() }
+                    mediaButton(icon: "forward.fill", size: 44) { player.next() }
                     Spacer(minLength: 0)
                 }
             }
         }
+        .frame(maxHeight: .infinity)
         .transition(.move(edge: .trailing).combined(with: .opacity))
     }
 
@@ -342,7 +343,7 @@ struct MediaControlView: View {
                 }
             }
         }
-        .frame(width: 64, height: 64)
+        .frame(width: 48, height: 48)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

@@ -77,6 +77,8 @@ struct MediaControlView: View {
                     Spacer(minLength: 0)
                 }
 
+                Spacer()
+
                 // İleri/geri sarma: kalın bar + süreler, sürükle-bırak
                 HStack(spacing: 8) {
                     Text(TrackFormat.duration(displayElapsed))
@@ -116,7 +118,7 @@ struct MediaControlView: View {
                         .lineLimit(1)
                 }
 
-                Spacer(minLength: 8)
+                Spacer()
 
                 HStack(spacing: 14) {
                     Spacer(minLength: 0)

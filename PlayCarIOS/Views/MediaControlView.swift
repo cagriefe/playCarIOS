@@ -81,7 +81,7 @@ struct MediaControlView: View {
                 Spacer(minLength: 4)
 
                 // 2. Ortalanmış ilerleme bölümü (bar üstte, süreler altta)
-                VStack(spacing: 4) {
+                VStack(spacing: 2) {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
@@ -106,7 +106,7 @@ struct MediaControlView: View {
                                 }
                         )
                     }
-                    .frame(height: 26)
+                    .frame(height: 22)
                     HStack {
                         Text(TrackFormat.duration(displayElapsed))
                         Spacer()

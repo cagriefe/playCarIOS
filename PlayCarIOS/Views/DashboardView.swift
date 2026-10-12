@@ -18,13 +18,10 @@ struct DashboardView: View {
                     .frame(width: contentW * 0.65)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                ViewThatFits(in: .vertical) {
-                    rightColumn
-                    ScrollView(.vertical, showsIndicators: false) {
-                        rightColumn
-                    }
-                }
-                .frame(width: contentW * 0.35)
+                // Sağ sütun sabit: kaydırma yok. Kaydırmalar sadece
+                // medya içindeki liste görünümlerinde (ScrollView + LazyVStack).
+                rightColumn
+                    .frame(width: contentW * 0.35)
             }
             .padding(8)
         }
@@ -80,10 +77,6 @@ struct DashboardView: View {
                     .foregroundStyle(.secondary)
                     .frame(width: 28, height: 22)
             }
-            // Derleme etiketi: ekrandan hangi sürümün çalıştığını doğrula
-            Text("b12")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

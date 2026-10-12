@@ -127,6 +127,17 @@ final class NavigationStore: ObservableObject {
 
     // MARK: - Private
 
+    /// Manevraya göre kamera yüksekliği (normal Maps gibi adaptif zoom):
+    /// yaklaştıça daralır, uzun düzlükte genişler. 2D her zaman (pitch 0).
+    func altitudeForNextManeuver() -> Double {
+        switch nextDistance {
+        case ..<150: return 300
+        case ..<500: return 550
+        case ..<1500: return 900
+        default: return 1600
+        }
+    }
+
     private func calculate(from userLocation: CLLocation, completion: @escaping (MKRoute?) -> Void) {
         guard let destination else { completion(nil); return }
         let request = MKDirections.Request()

@@ -14,6 +14,8 @@ struct MediaControlView: View {
     @ObservedObject var player: MusicPlayerManager
     @State private var panelState: MediaPanelState = .nowPlaying
     @State private var selectedPlaylist: MPMediaPlaylist?
+    /// Parmak bardayken görünen geçici oran (bırakınca çalara işlenir).
+    @State private var scrubFraction: Double?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -75,16 +77,44 @@ struct MediaControlView: View {
                     Spacer(minLength: 0)
                 }
 
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.white.opacity(0.12))
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(Color.white.opacity(0.7))
-                            .frame(width: geo.size.width * player.progress)
+                // İleri/geri sarma: kalın bar + süreler, sürükle-bırak
+                HStack(spacing: 8) {
+                    Text(TrackFormat.duration(displayElapsed))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.white.opacity(0.14))
+                            Capsule()
+                                .fill(Color.white.opacity(0.75))
+                                .frame(width: geo.size.width * displayFraction)
+                        }
+                        .frame(height: 6)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let f = min(max(value.location.x / geo.size.width, 0), 1)
+                                    scrubFraction = f
+                                    player.scrubbing = true
+                                    player.seek(to: f)
+                                }
+                                .onEnded { _ in
+                                    scrubFraction = nil
+                                    player.scrubbing = false
+                                }
+                        )
                     }
+                    .frame(height: 26)
+                    Text("-\(TrackFormat.duration(max(player.duration - displayElapsed, 0)))")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .lineLimit(1)
                 }
-                .frame(height: 3)
 
                 Spacer(minLength: 8)
 
@@ -100,6 +130,15 @@ struct MediaControlView: View {
             }
         }
         .transition(.move(edge: .trailing).combined(with: .opacity))
+    }
+
+    /// Ekranda görünen oran/süre: sürükleme varsa parmak, yoksa çalar.
+    private var displayFraction: Double {
+        scrubFraction ?? player.progress
+    }
+
+    private var displayElapsed: TimeInterval {
+        displayFraction * player.duration
     }
 
     // MARK: - Çalma listeleri

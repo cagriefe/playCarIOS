@@ -48,6 +48,10 @@ final class MusicPlayerManager: ObservableObject {
     @Published var artwork: UIImage?
     @Published var playlists: [MPMediaPlaylist] = []
     @Published var progress: Double = 0
+    @Published var elapsed: TimeInterval = 0
+    @Published var duration: TimeInterval = 0
+    /// Parmak bardayken ilerleme sayacı duraklatılır (çekişme olmasın).
+    var scrubbing = false
     @Published var nowPlayingID: UInt64 = 0
     @Published var currentTracks: [MPMediaItem] = []
     @Published var currentPlaylist: MPMediaPlaylist?
@@ -148,7 +152,15 @@ final class MusicPlayerManager: ObservableObject {
         currentTracks = applySort(list.items, by: sort)
     }
 
-    /// Tek parçayı çal: listeyi sıraya koy, ilgili parçadan başlat.
+    /// İleri/geri sar: 0...1 oranını süreye çevirir.
+    func seek(to fraction: Double) {
+        guard duration > 0 else { return }
+        let clamped = min(max(fraction, 0), 1)
+        let time = clamped * duration
+        player.currentPlaybackTime = time
+        elapsed = time
+        progress = clamped
+    }
     func playTrack(_ item: MPMediaItem, in playlist: MPMediaPlaylist) {
         guard authState == .authorized else { return }
         player.setQueue(with: playlist)
@@ -228,7 +240,7 @@ final class MusicPlayerManager: ObservableObject {
     private func startProgressTimer() {
         progressTimer?.invalidate()
         progressTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self, self.isPlaying else { return }
+            guard let self, self.isPlaying, !self.scrubbing else { return }
             self.updateProgress()
         }
     }
@@ -236,8 +248,12 @@ final class MusicPlayerManager: ObservableObject {
     private func updateProgress() {
         guard let item = player.nowPlayingItem, item.playbackDuration > 0 else {
             progress = 0
+            elapsed = 0
+            duration = 0
             return
         }
+        duration = item.playbackDuration
+        elapsed = player.currentPlaybackTime
         progress = min(max(player.currentPlaybackTime / item.playbackDuration, 0), 1)
     }
 

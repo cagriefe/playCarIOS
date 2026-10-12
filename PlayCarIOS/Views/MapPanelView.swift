@@ -45,7 +45,9 @@ struct MapPanelView: View {
                 mapStyleLight: mapStyleLight,
                 navStartCenter: $navStartCenter,
                 tapTick: $mapTapTick,
-                panTick: $mapPanTick
+                panTick: $mapPanTick,
+                isNavigating: nav.phase == .navigating,
+                navAltitude: nav.phase == .navigating ? nav.altitudeForNextManeuver() : 0
             )
             .ignoresSafeArea()
 
@@ -421,6 +423,10 @@ struct CarMapView: UIViewRepresentable {
     @Binding var navStartCenter: CLLocationCoordinate2D?
     @Binding var tapTick: Int
     @Binding var panTick: Int
+    /// Navigasyonda adaptif zoom: manevraya göre kamera yüksekliği (2D, pitch 0).
+    /// 0 = pasif. Takip modu zoom'u korur, sadece yükseklik ayarlanır.
+    var isNavigating: Bool
+    var navAltitude: Double
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -448,6 +454,14 @@ struct CarMapView: UIViewRepresentable {
         map.showsTraffic = showTraffic
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
         map.isPitchEnabled = is3D
+
+        // Adaptif zoom: manevra yaklaşınca daralır, düzlükte genişler (2D).
+        if isNavigating && navAltitude > 0 && abs(map.camera.altitude - navAltitude) > 150 {
+            var cam = map.camera
+            cam.altitude = navAltitude
+            cam.pitch = 0
+            map.setCamera(cam, animated: true)
+        }
 
         if followUser {
             if map.userTrackingMode != .followWithHeading {
@@ -729,6 +743,7 @@ struct FavoritesSheetView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             }
+                            .buttonStyle(.plain)
                         }
                         .onDelete { favorites.remove(at: $0) }
                     }

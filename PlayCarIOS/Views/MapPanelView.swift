@@ -50,7 +50,8 @@ struct MapPanelView: View {
             .ignoresSafeArea()
 
             HStack(alignment: .top, spacing: 8) {
-                Spacer(minLength: 0)
+                // Ray soldadır; sütun onun sağında ortalanır (çakışma yok)
+                Spacer(minLength: 100)
                 VStack(spacing: 8) {
                     SearchBarView(searchService: searchService) { completion in
                         searchService.resolve(completion) { item in
@@ -83,7 +84,7 @@ struct MapPanelView: View {
                     // Turn-by-turn kartı: sol panelin üstünde, arama altında sabit
                     navBanner
                 }
-                .frame(maxWidth: 380)
+                .frame(maxWidth: 360)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)

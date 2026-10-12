@@ -11,22 +11,22 @@ struct DashboardView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let contentW = geo.size.width - 36 // 12 padding + 12 spacing
+            let contentW = geo.size.width - 24 // 8 padding + 8 spacing
             VStack(spacing: 0) {
                 statusBar
 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     MapPanelView(locationManager: locationManager)
                         .frame(width: contentW * 0.65)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                    VStack(spacing: 10) {
+                    VStack(spacing: 8) {
                         SpeedometerView(location: locationManager)
                         MediaControlView(player: musicManager)
                     }
                     .frame(width: contentW * 0.35, alignment: .top)
                 }
-                .padding(12)
+                .padding(8)
             }
         }
         .background(Color.black)

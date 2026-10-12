@@ -9,7 +9,7 @@ struct MediaControlView: View {
     @State private var showPlaylists = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Text("MEDYA")
                     .font(.caption2.bold())
@@ -32,8 +32,9 @@ struct MediaControlView: View {
                 Button("İzin Ver") { player.requestAuthorization() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+                Spacer(minLength: 0)
             } else {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     artworkView
                     VStack(alignment: .leading, spacing: 1) {
                         Text(player.title)
@@ -47,18 +48,33 @@ struct MediaControlView: View {
                     Spacer(minLength: 0)
                 }
 
-                HStack(spacing: 12) {
+                // Parça ilerlemesi (ince bar)
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white.opacity(0.12))
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(Color.white.opacity(0.7))
+                            .frame(width: geo.size.width * player.progress)
+                    }
+                }
+                .frame(height: 3)
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 14) {
                     Spacer(minLength: 0)
-                    mediaButton(icon: "backward.fill", size: 46) { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 58) {
+                    mediaButton(icon: "backward.fill", size: 50) { player.previous() }
+                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 64) {
                         player.togglePlayPause()
                     }
-                    mediaButton(icon: "forward.fill", size: 46) { player.next() }
+                    mediaButton(icon: "forward.fill", size: 50) { player.next() }
                     Spacer(minLength: 0)
                 }
             }
         }
         .padding(12)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
         .sheet(isPresented: $showPlaylists) {
@@ -81,7 +97,7 @@ struct MediaControlView: View {
                 }
             }
         }
-        .frame(width: 52, height: 52)
+        .frame(width: 64, height: 64)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 

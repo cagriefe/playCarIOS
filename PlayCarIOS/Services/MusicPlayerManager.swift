@@ -24,20 +24,24 @@ final class MusicPlayerManager: ObservableObject {
     @Published var artist: String = "—"
     @Published var artwork: UIImage?
     @Published var playlists: [MPMediaPlaylist] = []
+    @Published var progress: Double = 0
     @Published var lastError: String?
 
     private let player = MPMusicPlayerController.systemMusicPlayer
     private var cancellables = Set<AnyCancellable>()
+    private var progressTimer: Timer?
 
     init() {
         syncAuthState()
         if authState == .authorized {
             beginObserving()
         }
+        startProgressTimer()
     }
 
     deinit {
         endObserving()
+        progressTimer?.invalidate()
     }
 
     func requestAuthorization() {
@@ -144,8 +148,26 @@ final class MusicPlayerManager: ObservableObject {
         isPlaying = (player.playbackState == .playing)
     }
 
+    /// Parça ilerlemesi (0...1). Sistem çalardan 1 sn'de bir okunur.
+    private func startProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self, self.isPlaying else { return }
+            self.updateProgress()
+        }
+    }
+
+    private func updateProgress() {
+        guard let item = player.nowPlayingItem, item.playbackDuration > 0 else {
+            progress = 0
+            return
+        }
+        progress = min(max(player.currentPlaybackTime / item.playbackDuration, 0), 1)
+    }
+
     private func refreshNowPlaying() {
         refreshPlaybackState()
+        updateProgress()
         guard let item = player.nowPlayingItem else {
             title = "Çalan parça yok"
             artist = "Müzik uygulamasında başlatın"

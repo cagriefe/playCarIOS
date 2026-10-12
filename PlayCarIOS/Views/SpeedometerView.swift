@@ -13,7 +13,7 @@ struct SpeedometerView: View {
             HStack(spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(Int(location.speedKmh.rounded()))")
-                        .font(.system(size: 46, weight: .heavy, design: .rounded))
+                        .font(.system(size: 48, weight: .heavy, design: .rounded))
                         .foregroundStyle(speedColor)
                         .monospacedDigit()
                         .lineLimit(1)

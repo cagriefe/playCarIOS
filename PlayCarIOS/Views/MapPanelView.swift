@@ -18,6 +18,8 @@ struct MapPanelView: View {
     @State private var followUser = true
     @State private var showFavorites = false
     @State private var overviewRoute: MKRoute?
+    @State private var initialCenter: CLLocationCoordinate2D?
+    @State private var didInitialZoom = false
     @AppStorage("mapStyleLight") private var mapStyleLight = false
     /// Sürüş modu: 4 sn işlemsizlikte ray + arama gizlenir (temiz harita).
     /// Navigasyon kartı ve seçili yer kartı her zaman görünür (güvenlik).
@@ -38,6 +40,7 @@ struct MapPanelView: View {
                 favorites: favorites.favorites,
                 route: nav.route,
                 overviewRoute: $overviewRoute,
+                initialCenter: $initialCenter,
                 mapStyleLight: mapStyleLight,
                 isNavigating: nav.phase == .navigating,
                 heading: locationManager.headingDegrees,
@@ -175,6 +178,11 @@ struct MapPanelView: View {
         .onChange(of: locationManager.lastLocation?.coordinate.latitude) { _, _ in
             guard let coord = locationManager.lastLocation?.coordinate else { return }
             searchService.updateRegion(around: coord)
+            if !didInitialZoom {
+                // Açılışta bir kez: 2D tepeden kamera
+                didInitialZoom = true
+                initialCenter = coord
+            }
             if let loc = locationManager.lastLocation {
                 nav.updateLocation(loc)
             }
@@ -396,6 +404,9 @@ struct CarMapView: UIViewRepresentable {
     var favorites: [FavoritePlace]
     var route: MKRoute?
     @Binding var overviewRoute: MKRoute?
+    /// İlk konumda bir kez uygulanan 2D açılış kamerası (zoom + pitch sabit).
+    /// Sonrası merkez-kaydırma: zoom/pitch'e dokunulmaz.
+    @Binding var initialCenter: CLLocationCoordinate2D?
     /// true = açık (gündüz) harita, false = koyu (gece) harita.
     /// Uygulama koyu temaya zorlu olduğu için harita varsayılanı
     /// sistemden değil buradan gelir.
@@ -500,28 +511,26 @@ struct CarMapView: UIViewRepresentable {
             }
         }
 
-        // Kamera hedefi
+        // Kamera hedefi: sadece merkezi kaydır, zoom/pitch korunur (2D kalır)
         if let target = cameraTarget {
-            let camera: MKMapCamera
-            if is3D {
-                camera = MKMapCamera(
-                    lookingAtCenter: target,
-                    fromDistance: 800,
-                    pitch: 60,
-                    heading: 0
-                )
-            } else {
-                camera = MKMapCamera(
-                    lookingAtCenter: target,
-                    fromDistance: 2000,
-                    pitch: 0,
-                    heading: 0
-                )
-            }
-            map.setCamera(camera, animated: true)
+            var cam = map.camera
+            cam.centerCoordinate = target
+            map.setCamera(cam, animated: true)
             DispatchQueue.main.async {
                 // Tek seferlik uygula, sürekli zıplamasın
                 cameraTarget = nil
+            }
+        } else if let first = initialCenter {
+            // Açılış: 2D tepeden, sokak seviyesi yakınlık
+            let camera = MKMapCamera(
+                lookingAtCenter: first,
+                fromDistance: 1500,
+                pitch: 0,
+                heading: 0
+            )
+            map.setCamera(camera, animated: false)
+            DispatchQueue.main.async {
+                initialCenter = nil
             }
         } else if is3D != context.coordinator.last3D {
             // Sadece 2D/3D değişiminde pitch güncelle

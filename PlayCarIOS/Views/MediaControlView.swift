@@ -95,12 +95,15 @@ struct MediaControlView: View {
                         .gesture(
                             DragGesture(minimumDistance: 0)
                                 .onChanged { value in
+                                    // Sürüklerken çalara HER karede seek gönderme (IPC + pil).
+                                    // Parmak görünümü yerelde güncellenir, tek seek bırakınca yapılır.
                                     let f = min(max(value.location.x / geo.size.width, 0), 1)
                                     scrubFraction = f
                                     player.scrubbing = true
-                                    player.seek(to: f)
                                 }
-                                .onEnded { _ in
+                                .onEnded { value in
+                                    let f = min(max(value.location.x / geo.size.width, 0), 1)
+                                    player.seek(to: f)
                                     scrubFraction = nil
                                     player.scrubbing = false
                                 }
@@ -215,11 +218,10 @@ struct MediaControlView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 2) {
-                        ForEach(Array(player.currentTracks.enumerated()), id: \.element.persistentID) { index, item in
+                        // id: sıra — aynı parça listede iki kez olabilir (persistentID çakışır).
+                        ForEach(Array(player.currentTracks.enumerated()), id: \.offset) { index, item in
                             Button {
-                                if let list = selectedPlaylist {
-                                    player.playTrack(item, in: list)
-                                }
+                                player.playTrack(at: index)
                                 panelState = .nowPlaying
                             } label: {
                                 HStack(spacing: 10) {
@@ -311,7 +313,7 @@ struct MediaControlView: View {
 
     private func playlistArtwork(for list: MPMediaPlaylist) -> some View {
         Group {
-            if let art = list.items.first?.artwork?.image(at: CGSize(width: 80, height: 80)) {
+            if let art = player.artwork(for: list) {
                 Image(uiImage: art)
                     .resizable()
                     .aspectRatio(contentMode: .fill)

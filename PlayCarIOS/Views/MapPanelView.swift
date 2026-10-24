@@ -1,10 +1,17 @@
 import SwiftUI
 import MapKit
 
-/// Harita paneli: sol %60.
+/// Harita takip modu (Apple Haritalar konum butonu döngüsü):
+/// none → follow (kuzey sabit) → heading (yöne dönen) → follow …
+enum MapFollowMode: Equatable {
+    case none
+    case follow
+    case heading
+}
+
+/// Harita paneli: sol %65.
 /// DÜZELTME NOTU: SwiftUI `Map` (iOS 17) trafik katmanı sunmaz.
 /// Bu yüzden trafik + 2D/3D + takip için MKMapView UIViewRepresentable kullanıldı.
-/// showsTraffic = true gerçekten çalışır.
 struct MapPanelView: View {
     @ObservedObject var locationManager: LocationManager
     @StateObject private var searchService = SearchService()
@@ -15,12 +22,11 @@ struct MapPanelView: View {
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
     @State private var is3D = false
-    @State private var showTraffic = true
-    @State private var followUser = true
+    @AppStorage("showTraffic") private var showTraffic = true
+    @State private var followMode: MapFollowMode = .follow
     @State private var showFavorites = false
     @State private var overviewRoute: MKRoute?
     @State private var initialCenter: CLLocationCoordinate2D?
-    @State private var navStartCenter: CLLocationCoordinate2D?
     @State private var didInitialZoom = false
     @AppStorage("mapStyleLight") private var mapStyleLight = false
     /// Sürüş modu: 4 sn işlemsizlikte ray + arama gizlenir (temiz harita).
@@ -29,6 +35,11 @@ struct MapPanelView: View {
     @State private var hideTimer: Timer?
     @State private var mapTapTick = 0
     @State private var mapPanTick = 0
+    /// Haritanın kuzeye göre dönüklüğü (pusula butonu için).
+    @State private var mapHeading: Double = 0
+    @State private var resetNorthTick = 0
+    @FocusState private var searchFocused: Bool
+    private let geocoder = CLGeocoder()
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -36,19 +47,22 @@ struct MapPanelView: View {
                 userLocation: locationManager.lastLocation?.coordinate,
                 selectedPlace: $selectedPlace,
                 cameraTarget: $cameraTarget,
-                is3D: is3D,
+                is3D: $is3D,
                 showTraffic: showTraffic,
-                followUser: followUser,
+                followMode: $followMode,
                 favorites: favorites.favorites,
                 route: nav.route,
                 overviewRoute: $overviewRoute,
                 initialCenter: $initialCenter,
                 mapStyleLight: mapStyleLight,
-                navStartCenter: $navStartCenter,
                 tapTick: $mapTapTick,
                 panTick: $mapPanTick,
+                mapHeading: $mapHeading,
+                resetNorthTick: resetNorthTick,
                 isNavigating: nav.phase == .navigating,
-                navAltitude: nav.phase == .navigating ? nav.altitudeForNextManeuver() : 0
+                navAltitude: nav.phase == .navigating ? nav.altitudeForNextManeuver() : 0,
+                onPickPlace: { item, subtitle in pickPlace(item, subtitle: subtitle) },
+                onDropPin: { coord in dropPin(at: coord) }
             )
             .ignoresSafeArea()
 
@@ -56,15 +70,17 @@ struct MapPanelView: View {
                 // Ray soldadır; sütun onun sağında ortalanır (çakışma yok)
                 Spacer(minLength: 100)
                 VStack(spacing: 8) {
-                    SearchBarView(searchService: searchService) { completion in
+                    // Sadece arama çubuğu otomatik gizlenir; izin ve navigasyon
+                    // kartları sürüş güvenliği için her zaman görünür kalır.
+                    SearchBarView(searchService: searchService, focused: $searchFocused) { completion in
                         searchService.resolve(completion) { item in
                             guard let item else { return }
                             nav.stop()
                             overviewRoute = nil
                             selectedPlace = item
                             selectedSubtitle = completion.subtitle
+                            followMode = .none
                             cameraTarget = item.placemark.coordinate
-                            followUser = false
                         }
                     } onSave: { completion in
                         searchService.resolve(completion) { item in
@@ -76,6 +92,8 @@ struct MapPanelView: View {
                             )
                         }
                     }
+                    .opacity(controlsVisible ? 1 : 0)
+                    .allowsHitTesting(controlsVisible)
 
                     if locationManager.authState != .authorized {
                         LocationPermissionBanner(
@@ -92,15 +110,13 @@ struct MapPanelView: View {
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
-            .opacity(controlsVisible ? 1 : 0)
-            .allowsHitTesting(controlsVisible)
 
             // Sol ikon rayı (CarPlay sidebar): dikey ortalı yüzen hap
             HStack {
                 VStack {
                     Spacer(minLength: 76)
                     VStack(spacing: 5) {
-                        railButton(icon: "location.fill", active: followUser, action: recenter)
+                        railButton(icon: locationIcon, active: followMode != .none, action: recenter)
                         railButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
                         railButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
                         railButton(icon: mapStyleLight ? "sun.max.fill" : "moon.fill", active: false) { mapStyleLight.toggle() }
@@ -108,6 +124,24 @@ struct MapPanelView: View {
                     }
                     .padding(5)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22))
+
+                    // Pusula: harita döndürülmüşse görünür, dokununca kuzeye döner
+                    // (Apple Haritalar'daki pusula davranışı).
+                    if showCompass {
+                        Button {
+                            pokeControls()
+                            resetNorthTick += 1
+                        } label: {
+                            Image(systemName: "location.north.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.red)
+                                .rotationEffect(.degrees(-mapHeading))
+                                .frame(width: 44, height: 44)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .padding(.top, 6)
+                        .transition(.opacity)
+                    }
                     Spacer(minLength: 0)
                 }
                 Spacer(minLength: 0)
@@ -162,6 +196,20 @@ struct MapPanelView: View {
                     .padding(10)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                     .frame(maxWidth: 330)
+                } else if nav.phase == .navigating && followMode == .none {
+                    // Navigasyonda harita elle kaydırıldı: Apple Haritalar'daki
+                    // "Yeniden Ortala" — her zaman görünür.
+                    Button {
+                        followMode = .heading
+                        pokeControls()
+                    } label: {
+                        Label("Ortala", systemImage: "location.north.line.fill")
+                            .font(.subheadline.bold())
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 } else {
                     Spacer(minLength: 0)
                 }
@@ -235,24 +283,29 @@ struct MapPanelView: View {
         .onDisappear {
             hideTimer?.invalidate()
         }
-        .onChange(of: locationManager.lastLocation?.coordinate.latitude) { _, _ in
-            guard let coord = locationManager.lastLocation?.coordinate else { return }
-            searchService.updateRegion(around: coord)
+        .onChange(of: locationManager.lastLocation) { _, loc in
+            // Her fix'te (sadece enlem değişince değil) çalışır: doğu-batı
+            // yönlü sürüşte de navigasyon ilerler.
+            guard let loc else { return }
+            searchService.updateRegion(around: loc.coordinate)
             if !didInitialZoom {
                 // Açılışta bir kez: 2D tepeden kamera
                 didInitialZoom = true
-                initialCenter = coord
+                initialCenter = loc.coordinate
             }
-            if let loc = locationManager.lastLocation {
-                nav.updateLocation(loc)
-            }
+            nav.updateLocation(loc)
         }
         .onChange(of: mapTapTick) {
-            toggleControls()
+            // Klavye açıkken haritaya dokunmak klavyeyi kapatır (Apple Haritalar gibi).
+            if searchFocused {
+                searchFocused = false
+            } else {
+                toggleControls()
+            }
         }
         .onChange(of: mapPanTick) {
-            // Kullanıcı haritayı elle kaydırdı: takibi bırak, kontrolleri göster
-            followUser = false
+            // Kullanıcı haritayı elle kaydırdı: kontrolleri göster
+            // (takip modu CarMapView tarafından zaten bırakıldı).
             pokeControls()
         }
         .onChange(of: searchService.query) {
@@ -260,6 +313,15 @@ struct MapPanelView: View {
         }
         .onChange(of: showFavorites) { _, shown in
             if shown {
+                hideTimer?.invalidate()
+                controlsVisible = true
+            } else {
+                pokeControls()
+            }
+        }
+        .onChange(of: searchFocused) { _, focused in
+            // Yazarken arama çubuğu gizlenmesin.
+            if focused {
                 hideTimer?.invalidate()
                 controlsVisible = true
             } else {
@@ -277,7 +339,7 @@ struct MapPanelView: View {
                     overviewRoute = nil
                     selectedPlace = item
                     selectedSubtitle = place.address
-                    followUser = false
+                    followMode = .none
                     if locationManager.lastLocation != nil {
                         startPreview(for: item)
                     } else {
@@ -287,13 +349,23 @@ struct MapPanelView: View {
             )
         }
         .onChange(of: nav.phase) { _, phase in
-            if phase == .preview {
+            switch phase {
+            case .preview:
+                // Önizleme: tüm rota kadraja alınır, takip bırakılır.
+                followMode = .none
                 overviewRoute = nav.route
+            case .navigating:
+                selectedPlace = nil
+                followMode = .heading
+            case .idle:
+                // Navigasyon bitti: takibe dön, haritayı kuzeye çevir.
+                followMode = .follow
+                resetNorthTick += 1
+            case .calculating, .arrived:
+                break
             }
-            if phase == .idle {
-                // Navigasyon bitti: takibe dön
-                followUser = true
-            }
+            // Pil: tam güç GPS yalnızca navigasyonda, diğer fazlarda tasarruflu.
+            locationManager.setNavigationActive(phase == .navigating)
             pokeControls()
         }
     }
@@ -303,9 +375,11 @@ struct MapPanelView: View {
     private func pokeControls() {
         controlsVisible = true
         hideTimer?.invalidate()
-        hideTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { _ in
+        let t = Timer.scheduledTimer(withTimeInterval: 4, repeats: false) { _ in
             withAnimation(.easeInOut(duration: 0.25)) { controlsVisible = false }
         }
+        t.tolerance = 0.5
+        hideTimer = t
     }
 
     private func toggleControls() {
@@ -322,11 +396,57 @@ struct MapPanelView: View {
         nav.previewRoute(to: item, from: loc)
     }
 
+    /// Apple Haritalar konum butonu: takip yok → takip et → yöne göre döndür → takip et…
+    /// Navigasyonda doğrudan sürüş kamerasına döner.
     private func recenter() {
-        followUser = true
-        selectedPlace = nil
-        if let coord = locationManager.lastLocation?.coordinate {
-            cameraTarget = coord
+        if nav.phase == .navigating {
+            followMode = .heading
+            return
+        }
+        switch followMode {
+        case .none: followMode = .follow
+        case .follow: followMode = .heading
+        case .heading: followMode = .follow
+        }
+    }
+
+    private var locationIcon: String {
+        switch followMode {
+        case .none: return "location"
+        case .follow: return "location.fill"
+        case .heading: return "location.north.line.fill"
+        }
+    }
+
+    /// Pusula: harita kuzeyden sapmışsa ve harita kendisi yöne göre dönmüyorsa.
+    private var showCompass: Bool {
+        let rotated = abs(mapHeading) > 2 && abs(mapHeading - 360) > 2
+        let autoRotating = followMode == .heading
+        return rotated && !autoRotating
+    }
+
+    /// Haritada dokunulan mekan (POI) seçildi.
+    private func pickPlace(_ item: MKMapItem, subtitle: String) {
+        guard nav.phase == .idle else { return }
+        selectedPlace = item
+        selectedSubtitle = subtitle
+    }
+
+    /// Uzun basma: işaretli konum bırak + adresi ters coğrafi kodla.
+    private func dropPin(at coordinate: CLLocationCoordinate2D) {
+        guard nav.phase == .idle else { return }
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        item.name = "İşaretli Konum"
+        selectedPlace = item
+        selectedSubtitle = String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude)
+        geocoder.cancelGeocode()
+        geocoder.reverseGeocodeLocation(
+            CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude),
+            preferredLocale: Locale(identifier: "tr_TR")
+        ) { placemarks, _ in
+            guard let pm = placemarks?.first, selectedPlace === item else { return }
+            let address = MapPlaceFormat.address(of: pm)
+            if !address.isEmpty { selectedSubtitle = address }
         }
     }
 
@@ -384,10 +504,6 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
                 Button("Başla") {
-                    followUser = true
-                    if let coord = locationManager.lastLocation?.coordinate {
-                        navStartCenter = coord
-                    }
                     nav.start()
                 }
                 .font(.subheadline.bold())
@@ -436,6 +552,24 @@ struct MapPanelView: View {
                         .foregroundStyle(.white)
                         .clipShape(Capsule())
                 }
+                // Cihazda Türkçe ses yüklü değilse konuşma yabancı aksanla olur.
+                if nav.turkishVoiceMissing {
+                    Button { nav.dismissTurkishVoiceWarning() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Text("Türkçe ses yüklü değil. Ayarlar > Erişilebilirlik > Konuşulan İçerik > Sesler > Türkçe")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                            Spacer(minLength: 0)
+                            Image(systemName: "xmark")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -457,86 +591,167 @@ struct MapPanelView: View {
 
 // MARK: - MKMapView wrapper (trafik destekli)
 
+/// Apple Haritalar davranışı:
+/// - Normalde MapKit'in kendi takip modları (follow / followWithHeading).
+/// - Navigasyonda sürüş kamerası: GPS gidiş yönüne (course) göre döner —
+///   araç içinde pusula metal yüzünden sapar — konum noktası ekranın alt
+///   kısmında durur, zoom manevra mesafesine göre kendiliğinden ayarlanır.
+/// - Kaydırma takibi bırakır, iki parmakla zoom takibi bozmaz.
+/// - Döndürme / yatırma serbest; mekana dokunma ve uzun basıp işaretleme var.
 struct CarMapView: UIViewRepresentable {
     var userLocation: CLLocationCoordinate2D?
     @Binding var selectedPlace: MKMapItem?
     @Binding var cameraTarget: CLLocationCoordinate2D?
-    var is3D: Bool
+    @Binding var is3D: Bool
     var showTraffic: Bool
-    var followUser: Bool
+    @Binding var followMode: MapFollowMode
     var favorites: [FavoritePlace]
     var route: MKRoute?
     @Binding var overviewRoute: MKRoute?
-    /// İlk konumda bir kez uygulanan 2D açılış kamerası (zoom + pitch sabit).
-    /// Sonrası merkez-kaydırma: zoom/pitch'e dokunulmaz.
+    /// İlk konumda bir kez uygulanan 2D açılış kamerası.
     @Binding var initialCenter: CLLocationCoordinate2D?
     /// true = açık (gündüz) harita, false = koyu (gece) harita.
-    /// Uygulama koyu temaya zorlu olduğu için harita varsayılanı
-    /// sistemden değil buradan gelir.
     var mapStyleLight: Bool
-    /// Navigasyon Başla'da bir kez uygulanan 2D yakın zoom (500 m, pitch 0).
-    /// Sonrası normal takip: 2D + baş yönü, zoom kullanıcıda.
-    @Binding var navStartCenter: CLLocationCoordinate2D?
     @Binding var tapTick: Int
     @Binding var panTick: Int
-    /// Navigasyonda adaptif zoom: manevraya göre kamera yüksekliği (2D, pitch 0).
-    /// 0 = pasif. Takip modu zoom'u korur, sadece yükseklik ayarlanır.
+    /// Haritanın kuzeye göre dönüklüğü (derece) — pusula butonu için.
+    @Binding var mapHeading: Double
+    /// Her artışta harita kuzeye döner.
+    var resetNorthTick: Int
     var isNavigating: Bool
+    /// Navigasyonda manevraya göre kamera yüksekliği (m). 0 = pasif.
     var navAltitude: Double
+    var onPickPlace: (MKMapItem, String) -> Void
+    var onDropPin: (CLLocationCoordinate2D) -> Void
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
-        map.delegate = context.coordinator
+        let c = context.coordinator
+        c.parent = self
+        map.delegate = c
+        map.preferredConfiguration = Self.configuration(traffic: showTraffic)
+        c.lastTraffic = showTraffic
         map.showsUserLocation = true
-        map.showsCompass = false // üst bardaki kendi pusulamız var; çakışmasın
+        map.showsCompass = false // kendi pusula butonumuz ray altında
         map.showsScale = true
-        map.showsTraffic = showTraffic
-        map.userTrackingMode = .followWithHeading
-        map.mapType = .standard
+        map.isPitchEnabled = true
+        map.isRotateEnabled = true
+        map.selectableMapFeatures = [.pointsOfInterest]
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
-        // Eğiklik kilidi: sadece 3D modunda parmakla yatırılabilir.
-        // Böylece tüm zoom/pinch hareketleri 2D tepeden olur.
-        map.isPitchEnabled = is3D
-        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap))
-        tap.cancelsTouchesInView = false
-        map.addGestureRecognizer(tap)
-        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
-        pan.cancelsTouchesInView = false
-        map.addGestureRecognizer(pan)
+        map.setUserTrackingMode(Self.trackingMode(for: followMode), animated: false)
+        c.last3D = is3D
+        c.lastResetNorthTick = resetNorthTick
+
+        let tap = UITapGestureRecognizer(target: c, action: #selector(Coordinator.handleTap(_:)))
+        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.handlePan(_:)))
+        pan.maximumNumberOfTouches = 1
+        let multiPan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.handleMultiTouch(_:)))
+        multiPan.minimumNumberOfTouches = 2
+        let pinch = UIPinchGestureRecognizer(target: c, action: #selector(Coordinator.handlePinch(_:)))
+        let rotate = UIRotationGestureRecognizer(target: c, action: #selector(Coordinator.handleRotate(_:)))
+        let longPress = UILongPressGestureRecognizer(target: c, action: #selector(Coordinator.handleLongPress(_:)))
+        longPress.minimumPressDuration = 0.5
+        for g in [tap, pan, multiPan, pinch, rotate, longPress] as [UIGestureRecognizer] {
+            // Sadece gözlemci: MKMapView'ın kendi hareketlerini engellemesin.
+            g.cancelsTouchesInView = false
+            g.delegate = c
+            map.addGestureRecognizer(g)
+        }
         return map
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
-        map.showsTraffic = showTraffic
-        map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
-        map.isPitchEnabled = is3D
+        let c = context.coordinator
+        c.parent = self
+        // Bu fonksiyon içindeki kamera/mod değişiklikleri programatik;
+        // delegate bunları "kullanıcı takibi bıraktı" diye yorumlamasın.
+        c.isUpdating = true
+        defer { c.isUpdating = false }
 
-        // Adaptif zoom: manevra yaklaşınca daralır, düzlükte genişler (2D).
-        if isNavigating && navAltitude > 0 && abs(map.camera.altitude - navAltitude) > 150 {
-            var cam = map.camera
-            cam.altitude = navAltitude
-            cam.pitch = 0
+        if c.lastTraffic != showTraffic {
+            c.lastTraffic = showTraffic
+            map.preferredConfiguration = Self.configuration(traffic: showTraffic)
+        }
+        let style: UIUserInterfaceStyle = mapStyleLight ? .light : .dark
+        if map.overrideUserInterfaceStyle != style { map.overrideUserInterfaceStyle = style }
+
+        updateAnnotations(map, c)
+        updateOverlays(map, c)
+
+        // Tek seferlik kamera komutları
+        if let overview = overviewRoute {
+            var rect = overview.polyline.boundingMapRect
+            let w = rect.size.width, h = rect.size.height
+            rect = rect.insetBy(dx: -w * 0.15, dy: -h * 0.15)
+            map.setUserTrackingMode(.none, animated: false)
+            // Üstte arama/rota kartı, solda ray var: rota onların altında kalmasın.
+            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 150, left: 110, bottom: 30, right: 30), animated: true)
+            DispatchQueue.main.async { overviewRoute = nil }
+        } else if let target = cameraTarget {
+            // Seçilen yere git: makul bir yakınlıkta ortala.
+            map.setUserTrackingMode(.none, animated: false)
+            let cam = map.camera
+            let altitude = (300...4000).contains(cam.altitude) ? cam.altitude : 1200
+            let newCam = MKMapCamera(lookingAtCenter: target, fromDistance: altitude, pitch: cam.pitch, heading: cam.heading)
+            map.setCamera(newCam, animated: true)
+            DispatchQueue.main.async { cameraTarget = nil }
+        } else if let first = initialCenter {
+            // Açılış: 2D tepeden, sokak seviyesi yakınlık
+            map.setCamera(MKMapCamera(lookingAtCenter: first, fromDistance: 1500, pitch: 0, heading: 0), animated: false)
+            DispatchQueue.main.async { initialCenter = nil }
+        }
+
+        if resetNorthTick != c.lastResetNorthTick {
+            c.lastResetNorthTick = resetNorthTick
+            if followMode == .heading && !isNavigating {
+                followMode = .follow
+            }
+            let cam = map.camera
+            cam.heading = 0
             map.setCamera(cam, animated: true)
         }
 
-        if followUser {
-            if map.userTrackingMode != .followWithHeading {
-                map.setUserTrackingMode(.followWithHeading, animated: true)
+        // Takip
+        let navFollow = isNavigating && followMode != .none
+        if navFollow {
+            if map.userTrackingMode != .none { map.setUserTrackingMode(.none, animated: false) }
+            if !c.navFollowing || is3D != c.last3D {
+                // Sürüş kamerasına ilk geçiş (veya 2D/3D değişti): hemen uygula.
+                c.navFollowing = true
+                c.last3D = is3D
+                c.applyNavCamera(map, location: map.userLocation.location, duration: 0.6)
+            } else if abs(c.lastNavAltitude - navAltitude) > 1 {
+                // Manevra mesafesi bandı değişti: zoom'u yumuşakça güncelle.
+                c.applyNavCamera(map, location: map.userLocation.location, duration: 1.0)
             }
         } else {
-            if map.userTrackingMode != .none {
-                map.setUserTrackingMode(.none, animated: true)
+            c.navFollowing = false
+            c.navFollowingHasHeading = false
+            if is3D != c.last3D {
+                c.last3D = is3D
+                let cam = map.camera
+                cam.pitch = is3D ? 60 : 0
+                map.setCamera(cam, animated: true)
+            }
+            let desired = Self.trackingMode(for: followMode)
+            if map.userTrackingMode != desired {
+                map.setUserTrackingMode(desired, animated: true)
             }
         }
+    }
 
-        // Seçili yer + favori pin'leri
-        map.removeAnnotations(map.annotations.filter { !($0 is MKUserLocation) })
-        if let item = selectedPlace {
-            let ann = MKPointAnnotation()
-            ann.coordinate = item.placemark.coordinate
-            ann.title = item.name
-            map.addAnnotation(ann)
+    private func updateAnnotations(_ map: MKMapView, _ c: Coordinator) {
+        // Seçili yer + favori pin'leri — SADECE değişince yeniden kur.
+        let selectedKey: String? = selectedPlace.map {
+            "\($0.placemark.coordinate.latitude),\($0.placemark.coordinate.longitude),\($0.name ?? "")"
         }
+        let favKey = favorites.map(\.id.uuidString).joined(separator: "|")
+        guard selectedKey != c.lastSelectedKey || favKey != c.lastFavKey else { return }
+        c.lastSelectedKey = selectedKey
+        c.lastFavKey = favKey
+        map.removeAnnotations(map.annotations.filter {
+            $0 is MKPointAnnotation
+        })
         for fav in favorites {
             let ann = FavoriteAnnotation()
             ann.coordinate = fav.coordinate
@@ -544,95 +759,236 @@ struct CarMapView: UIViewRepresentable {
             ann.subtitle = fav.address
             map.addAnnotation(ann)
         }
+        if let item = selectedPlace {
+            // Haritadaki mekan seçimini kaldır, yerine kırmızı iğne koy.
+            for sel in map.selectedAnnotations where sel is MKMapFeatureAnnotation {
+                map.deselectAnnotation(sel, animated: false)
+            }
+            let isFavorite = favorites.contains {
+                abs($0.latitude - item.placemark.coordinate.latitude) < 1e-4 &&
+                abs($0.longitude - item.placemark.coordinate.longitude) < 1e-4
+            }
+            if !isFavorite {
+                let ann = MKPointAnnotation()
+                ann.coordinate = item.placemark.coordinate
+                ann.title = item.name
+                map.addAnnotation(ann)
+                map.selectAnnotation(ann, animated: true)
+            }
+        }
+    }
 
-        // Rota çizgisi: beyaz zemin + mavi hat (yüksek kontrast)
+    private func updateOverlays(_ map: MKMapView, _ c: Coordinator) {
+        // Rota çizgisi: beyaz zemin + mavi hat (yüksek kontrast) — SADECE rota değişince.
+        let routeID = route.map { ObjectIdentifier($0.polyline) }
+        guard routeID != c.lastRouteID else { return }
+        c.lastRouteID = routeID
         map.removeOverlays(map.overlays)
         if let route {
             let casing = RouteCasingPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
             map.addOverlay(casing, level: .aboveRoads)
             map.addOverlay(route.polyline, level: .aboveRoads)
         }
+    }
 
-        // Önizlemede tüm rotayı kadraja al (tek seferlik)
-        if let overview = overviewRoute {
-            var rect = overview.polyline.boundingMapRect
-            let w = rect.size.width, h = rect.size.height
-            rect = rect.insetBy(dx: -w * 0.25, dy: -h * 0.25)
-            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 80, left: 20, bottom: 20, right: 20), animated: true)
-            DispatchQueue.main.async {
-                overviewRoute = nil
-            }
-        }
+    private static func configuration(traffic: Bool) -> MKMapConfiguration {
+        let config = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
+        config.showsTraffic = traffic
+        return config
+    }
 
-        // Kamera hedefi: sadece merkezi kaydır, zoom/pitch korunur (2D kalır)
-        if let target = cameraTarget {
-            var cam = map.camera
-            cam.centerCoordinate = target
-            map.setCamera(cam, animated: true)
-            DispatchQueue.main.async {
-                // Tek seferlik uygula, sürekli zıplamasın
-                cameraTarget = nil
-            }
-        } else if let first = initialCenter {
-            // Açılış: 2D tepeden, sokak seviyesi yakınlık
-            let camera = MKMapCamera(
-                lookingAtCenter: first,
-                fromDistance: 1500,
-                pitch: 0,
-                heading: 0
-            )
-            map.setCamera(camera, animated: false)
-            DispatchQueue.main.async {
-                initialCenter = nil
-            }
-        } else if let start = navStartCenter {
-            // Navigasyon Başla: 2D tepeden yakın zoom (pitch hep 0)
-            let camera = MKMapCamera(
-                lookingAtCenter: start,
-                fromDistance: 500,
-                pitch: 0,
-                heading: 0
-            )
-            map.setCamera(camera, animated: true)
-            DispatchQueue.main.async {
-                navStartCenter = nil
-            }
-        } else if is3D != context.coordinator.last3D {
-            // Sadece 2D/3D değişiminde pitch güncelle
-            var cam = map.camera
-            cam.pitch = is3D ? 60 : 0
-            map.setCamera(cam, animated: true)
-            context.coordinator.last3D = is3D
+    private static func trackingMode(for mode: MapFollowMode) -> MKUserTrackingMode {
+        switch mode {
+        case .none: return .none
+        case .follow: return .follow
+        case .heading: return .followWithHeading
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        let c = Coordinator()
-        c.onTap = { self.tapTick += 1 }
-        c.onPan = { self.panTick += 1 }
-        return c
+        Coordinator(parent: self)
     }
 
-    final class Coordinator: NSObject, MKMapViewDelegate {
+    final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
+        var parent: CarMapView
+        var isUpdating = false
         var last3D = false
-        var onTap: (() -> Void)?
-        var onPan: (() -> Void)?
+        var lastTraffic = true
+        var lastSelectedKey: String?
+        var lastFavKey = ""
+        var lastRouteID: ObjectIdentifier?
+        var lastResetNorthTick = 0
+        var navFollowing = false
+        var lastNavAltitude: Double = 0
+        var lastNavHeading: CLLocationDirection = 0
+        /// Kullanıcı iki parmakla zoom yaptıysa bir süre otomatik zoom'a karışma.
+        var userZoomUntil = Date.distantPast
+        /// Son kullanıcı hareketi: takip modu değişikliği bundan kaynaklanıyorsa senkronla.
+        var lastUserGesture = Date.distantPast
 
-        @objc func handleTap() { onTap?() }
+        init(parent: CarMapView) {
+            self.parent = parent
+        }
 
-        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
-            if gesture.state == .began { onPan?() }
+        // MARK: Hareketler
+
+        func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            true
+        }
+
+        @objc func handleTap(_ g: UITapGestureRecognizer) {
+            guard let map = g.view as? MKMapView else { return }
+            // Pin / mekan / konum noktasına dokunuşu kontrol göster-gizle sayma.
+            var hit = map.hitTest(g.location(in: map), with: nil)
+            while let v = hit, v !== map {
+                if v is MKAnnotationView { return }
+                hit = v.superview
+            }
+            parent.tapTick += 1
+        }
+
+        @objc func handlePan(_ g: UIPanGestureRecognizer) {
+            guard g.state == .began else { return }
+            lastUserGesture = Date()
+            if parent.followMode != .none { parent.followMode = .none }
+            parent.panTick += 1
+        }
+
+        @objc func handleMultiTouch(_ g: UIPanGestureRecognizer) {
+            if g.state == .began || g.state == .changed { lastUserGesture = Date() }
+        }
+
+        @objc func handlePinch(_ g: UIPinchGestureRecognizer) {
+            guard g.state == .began || g.state == .changed else { return }
+            lastUserGesture = Date()
+            // Navigasyonda zoom takibi bozmaz; 10 sn kullanıcının zoom'u korunur.
+            userZoomUntil = Date().addingTimeInterval(10)
+        }
+
+        @objc func handleRotate(_ g: UIRotationGestureRecognizer) {
+            guard g.state == .began else { return }
+            lastUserGesture = Date()
+            if parent.isNavigating, parent.followMode != .none {
+                parent.followMode = .none
+            }
+        }
+
+        @objc func handleLongPress(_ g: UILongPressGestureRecognizer) {
+            guard g.state == .began, let map = g.view as? MKMapView else { return }
+            let coord = map.convert(g.location(in: map), toCoordinateFrom: map)
+            parent.onDropPin(coord)
+        }
+
+        // MARK: Sürüş kamerası
+
+        func applyNavCamera(_ map: MKMapView, location: CLLocation?, duration: TimeInterval) {
+            guard let loc = location else { return }
+            // Yön: hareket halindeyken GPS gidiş yönü; dururken son yön korunur.
+            if loc.course >= 0, loc.speed > 1.5 {
+                lastNavHeading = loc.course
+            } else if !navFollowingHasHeading {
+                lastNavHeading = map.camera.heading
+                navFollowingHasHeading = true
+            }
+            let altitude: Double
+            if Date() < userZoomUntil {
+                altitude = map.camera.altitude
+            } else {
+                altitude = parent.navAltitude > 0 ? parent.navAltitude : 800
+                lastNavAltitude = parent.navAltitude
+            }
+            let pitch: CGFloat = parent.is3D ? 55 : 0
+            // Konum noktası ekranın alt kısmında kalsın: merkezi ileri kaydır.
+            let ahead = altitude * (parent.is3D ? 0.55 : 0.3)
+            let center = Self.coordinate(loc.coordinate, movedBy: ahead, bearing: lastNavHeading)
+            let cam = MKMapCamera(lookingAtCenter: center, fromDistance: altitude, pitch: pitch, heading: lastNavHeading)
+            UIView.animate(
+                withDuration: duration,
+                delay: 0,
+                options: [.curveLinear, .beginFromCurrentState, .allowUserInteraction]
+            ) {
+                map.camera = cam
+            }
+        }
+
+        var navFollowingHasHeading = false
+
+        private static func coordinate(_ c: CLLocationCoordinate2D, movedBy meters: Double, bearing: CLLocationDirection) -> CLLocationCoordinate2D {
+            let r = 6_371_000.0
+            let d = meters / r
+            let b = bearing * .pi / 180
+            let lat1 = c.latitude * .pi / 180
+            let lon1 = c.longitude * .pi / 180
+            let lat2 = asin(sin(lat1) * cos(d) + cos(lat1) * sin(d) * cos(b))
+            let lon2 = lon1 + atan2(sin(b) * sin(d) * cos(lat1), cos(d) - sin(lat1) * sin(lat2))
+            return CLLocationCoordinate2D(latitude: lat2 * 180 / .pi, longitude: lon2 * 180 / .pi)
+        }
+
+        // MARK: MKMapViewDelegate
+
+        func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
+            guard navFollowing else {
+                navFollowingHasHeading = false
+                return
+            }
+            applyNavCamera(mapView, location: userLocation.location, duration: 1.0)
+        }
+
+        func mapView(_ mapView: MKMapView, didChange mode: MKUserTrackingMode, animated: Bool) {
+            // Sadece kullanıcı hareketinden kaynaklanan değişiklikleri yansıt
+            // (kaydırma → takip biter, döndürme → yöne göre dönme biter).
+            guard !isUpdating, !parent.isNavigating,
+                  Date().timeIntervalSince(lastUserGesture) < 1.5 else { return }
+            let newMode: MapFollowMode
+            switch mode {
+            case .follow: newMode = .follow
+            case .followWithHeading: newMode = .heading
+            default: newMode = .none
+            }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.parent.followMode != newMode else { return }
+                self.parent.followMode = newMode
+            }
+        }
+
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            let heading = mapView.camera.heading
+            let pitched = mapView.camera.pitch > 10
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if abs(self.parent.mapHeading - heading) > 1 {
+                    self.parent.mapHeading = heading
+                }
+                // Kullanıcı iki parmakla yatırdı/düzledi: 2D/3D butonu bunu yansıtsın.
+                if !self.navFollowing, pitched != self.parent.is3D,
+                   Date().timeIntervalSince(self.lastUserGesture) < 3 {
+                    self.last3D = pitched
+                    self.parent.is3D = pitched
+                }
+            }
+        }
+
+        func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
+            // Haritadaki bir mekana (POI) dokunuldu: detayını çözüp seçili yer yap.
+            guard let feature = annotation as? MKMapFeatureAnnotation else { return }
+            MKMapItemRequest(mapFeatureAnnotation: feature).getMapItem { [weak self] item, _ in
+                guard let self, let item else { return }
+                let subtitle = MapPlaceFormat.address(of: item.placemark)
+                self.parent.onPickPlace(item, subtitle)
+            }
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-            if annotation is MKUserLocation { return nil }
+            if annotation is MKUserLocation || annotation is MKMapFeatureAnnotation { return nil }
             if annotation is FavoriteAnnotation {
                 let id = "favPin"
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView
                     ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: id)
+                v.annotation = annotation
                 v.glyphImage = UIImage(systemName: "star.fill")
                 v.markerTintColor = .systemYellow
                 v.canShowCallout = true
+                v.displayPriority = .required
                 return v
             }
             return nil // seçili yer: varsayılan kırmızı pin + callout
@@ -661,6 +1017,18 @@ struct CarMapView: UIViewRepresentable {
     }
 }
 
+/// Adres metni: "Sokak No, İlçe, İl" (boş parçalar atlanır).
+enum MapPlaceFormat {
+    static func address(of pm: CLPlacemark) -> String {
+        let street = [pm.thoroughfare, pm.subThoroughfare].compactMap { $0 }.joined(separator: " ")
+        let parts = [street, pm.subLocality ?? pm.locality, pm.administrativeArea]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+        var seen = Set<String>()
+        return parts.filter { seen.insert($0).inserted }.joined(separator: ", ")
+    }
+}
+
 /// Rota beyaz zemini: mavi hattın altında daha kalın beyaz çizgi.
 final class RouteCasingPolyline: MKPolyline {}
 
@@ -671,9 +1039,9 @@ final class FavoriteAnnotation: MKPointAnnotation {}
 
 struct SearchBarView: View {
     @ObservedObject var searchService: SearchService
+    var focused: FocusState<Bool>.Binding
     var onSelect: (MKLocalSearchCompletion) -> Void
     var onSave: (MKLocalSearchCompletion) -> Void
-    @FocusState private var focused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -682,11 +1050,11 @@ struct SearchBarView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
                     TextField("Adres veya mekan ara (örn. Kadıköy)", text: $searchService.query)
-                        .focused($focused)
+                        .focused(focused)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
                         .submitLabel(.search)
-                        .onSubmit { focused = false }
+                        .onSubmit { focused.wrappedValue = false }
                     if searchService.isSearching {
                         ProgressView().scaleEffect(0.8)
                     } else if !searchService.query.isEmpty {
@@ -700,10 +1068,10 @@ struct SearchBarView: View {
 
                 // Klavye açıkken haritada boşluğa dokunmak klavyeyi kapatmaz
                 // (MKMapView dokunmaları yutar). Standart çıkış: Vazgeç.
-                if focused {
+                if focused.wrappedValue {
                     Button("Vazgeç") {
                         searchService.query = ""
-                        focused = false
+                        focused.wrappedValue = false
                     }
                     .font(.subheadline)
                     .padding(.horizontal, 8)
@@ -712,13 +1080,13 @@ struct SearchBarView: View {
                 }
             }
 
-            if focused && !searchService.completions.isEmpty {
+            if focused.wrappedValue && !searchService.completions.isEmpty {
                 ScrollView(.vertical, showsIndicators: true) {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(searchService.completions, id: \.self) { c in
                             HStack(spacing: 0) {
                                 Button {
-                                    focused = false
+                                    focused.wrappedValue = false
                                     onSelect(c)
                                 } label: {
                                     VStack(alignment: .leading, spacing: 2) {

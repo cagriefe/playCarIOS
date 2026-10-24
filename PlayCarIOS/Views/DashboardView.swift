@@ -63,7 +63,7 @@ struct DashboardView: View {
             HStack(spacing: 2) {
                 Image(systemName: batteryIcon)
                     .font(.caption2)
-                    .foregroundStyle(telemetry.batteryLevel < 0.2 ? .red : .green)
+                    .foregroundStyle(batteryColor)
                 Text(telemetry.batteryText)
                     .font(.caption2.bold())
                     .monospacedDigit()
@@ -90,6 +90,15 @@ struct DashboardView: View {
         if lvl >= 0.65 { return "battery.75" }
         if lvl >= 0.35 { return "battery.50" }
         return "battery.25"
+    }
+
+    /// Bilinmeyen seviye (-1) gri, %20 altı kırmızı, üstü yeşil.
+    /// Eskiden bilinmeyen değer de kırmızıya düşüyordu (yanlış alarm).
+    private var batteryColor: Color {
+        let lvl = telemetry.batteryLevel
+        if lvl < 0 { return .gray }
+        if lvl < 0.2 { return .red }
+        return .green
     }
 }
 

@@ -43,7 +43,16 @@ final class SearchService: NSObject, ObservableObject, MKLocalSearchCompleterDel
     }
 
     /// Kullanıcının gerçek konumuna göre bias'ı güncelle.
+    /// Pil: her GPS fix'inde bölgeyi oynatma — 400 m'den fazla
+    /// uzaklaşınca güncelle, yoksa atla (sonuçlar aynı kalır).
+    private var lastBiasCoordinate: CLLocationCoordinate2D?
     func updateRegion(around coordinate: CLLocationCoordinate2D) {
+        if let last = lastBiasCoordinate {
+            let moved = CLLocation(latitude: last.latitude, longitude: last.longitude)
+                .distance(from: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude))
+            if moved < 400 { return }
+        }
+        lastBiasCoordinate = coordinate
         searchRegion = MKCoordinateRegion(
             center: coordinate,
             span: MKCoordinateSpan(latitudeDelta: 1.5, longitudeDelta: 1.5)
@@ -69,8 +78,10 @@ final class SearchService: NSObject, ObservableObject, MKLocalSearchCompleterDel
 
     func completerDidUpdateResults(_ completer: MKLocalSearchCompleter) {
         DispatchQueue.main.async {
-            self.completions = completer.results
             self.isSearching = false
+            // Sorgu bu arada temizlendiyse geç gelen sonuçları gösterme.
+            guard !self.query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            self.completions = completer.results
         }
     }
 

@@ -6,7 +6,7 @@ import Combine
 /// UIDevice.isBatteryMonitoringEnabled = true gerekir (init'te açılır).
 final class TelemetryStore: ObservableObject {
     @Published var now = Date()
-    @Published var batteryLevel: Float = UIDevice.current.batteryLevel
+    @Published var batteryLevel: Float = -1
     @Published var keepScreenOn: Bool {
         didSet {
             UserDefaults.standard.set(keepScreenOn, forKey: "keepScreenOn")
@@ -16,23 +16,66 @@ final class TelemetryStore: ObservableObject {
 
     private var timer: Timer?
 
+    // DateFormatter pahalı: her saniye yaratma, statik önbellekle.
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "tr_TR")
+        f.dateFormat = "HH:mm"
+        return f
+    }()
+    private static let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "tr_TR")
+        f.dateFormat = "d MMM EEE"
+        return f
+    }()
+
     init() {
         UIDevice.current.isBatteryMonitoringEnabled = true
+        // İzleme açıldıktan sonra gerçek değeri oku (öncesinde -1 döner).
+        self.batteryLevel = UIDevice.current.batteryLevel
         self.keepScreenOn = UserDefaults.standard.object(forKey: "keepScreenOn") == nil
             ? true
             : UserDefaults.standard.bool(forKey: "keepScreenOn")
 
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.now = Date()
-            self?.batteryLevel = UIDevice.current.batteryLevel
-        }
+        scheduleMinuteTimer()
 
+        // Pil sadece bildirimle güncellenir (polling yok).
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(batteryChanged),
             name: UIDevice.batteryLevelDidChangeNotification,
             object: nil
         )
+        // Arka plandan dönünce timer'lar gecikmiş olabilir: saati/pili hemen tazele.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(didBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    /// Saat dakikada bir değişir: timer tam dakika başında, 60 sn'de bir tetiklenir.
+    private func scheduleMinuteTimer() {
+        timer?.invalidate()
+        now = Date()
+        let nextMinute = Calendar.current.nextDate(
+            after: now,
+            matching: DateComponents(second: 0),
+            matchingPolicy: .nextTime
+        ) ?? now.addingTimeInterval(60)
+        let t = Timer(fire: nextMinute, interval: 60, repeats: true) { [weak self] _ in
+            self?.now = Date()
+        }
+        t.tolerance = 0.5
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
+    }
+
+    @objc private func didBecomeActive() {
+        batteryLevel = UIDevice.current.batteryLevel
+        scheduleMinuteTimer()
     }
 
     deinit {
@@ -45,17 +88,11 @@ final class TelemetryStore: ObservableObject {
     }
 
     var timeString: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "HH:mm"
-        return f.string(from: now)
+        Self.timeFormatter.string(from: now)
     }
 
     var dateString: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "d MMM EEE"
-        return f.string(from: now)
+        Self.dateFormatter.string(from: now)
     }
 
     var batteryText: String {

@@ -32,9 +32,11 @@ final class CallStore: NSObject, ObservableObject {
         timer?.invalidate()
         startDate = Date()
         tick()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let t = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.tick()
         }
+        t.tolerance = 0.3
+        timer = t
     }
 
     private func stopTimer() {

@@ -61,13 +61,17 @@ final class MusicPlayerManager: ObservableObject {
     private let player = MPMusicPlayerController.systemMusicPlayer
     private var cancellables = Set<AnyCancellable>()
     private var progressTimer: Timer?
+    /// Artwork yeniden decode'u engelle: aynı parça tekrar gelirse atla.
+    private var artworkCacheID: UInt64 = 0
+    private var playlistArtworkCache: [UInt64: UIImage?] = [:]
 
     init() {
         syncAuthState()
         if authState == .authorized {
             beginObserving()
         }
-        startProgressTimer()
+        // Timer artık isteğe bağlı: sadece çalarken kurulur (pil).
+        if isPlaying { ensureProgressTimer() }
     }
 
     deinit {
@@ -108,17 +112,38 @@ final class MusicPlayerManager: ObservableObject {
         player.skipToNextItem()
     }
 
+    /// Apple Music davranışı: 3 sn'den fazla çalındıysa parçayı başa sarar,
+    /// değilse önceki parçaya geçer.
     func previous() {
         guard authState == .authorized else { return }
-        player.skipToPreviousItem()
+        if player.currentPlaybackTime > 3 {
+            player.skipToBeginning()
+            updateProgress()
+        } else {
+            player.skipToPreviousItem()
+        }
+    }
+
+    /// Liste kapağı (önbellekli): satır her çizildiğinde yeniden decode edilmez.
+    func artwork(for playlist: MPMediaPlaylist) -> UIImage? {
+        let key = playlist.persistentID
+        if let cached = playlistArtworkCache[key] { return cached }
+        let image = playlist.representativeItem?.artwork?.image(at: CGSize(width: 80, height: 80))
+            ?? playlist.items.first?.artwork?.image(at: CGSize(width: 80, height: 80))
+        playlistArtworkCache[key] = image
+        return image
     }
 
     /// Kullanıcının çalma listeleri (Müzik arşivi).
+    /// Sorgu arka planda yapılır, liste sıralaması orada biter (UI takılmaz).
     func loadPlaylists() {
         guard authState == .authorized else { return }
-        let lists = MPMediaQuery.playlists().collections?.compactMap { $0 as? MPMediaPlaylist } ?? []
-        playlists = lists.sorted {
-            ($0.name ?? "").localizedCaseInsensitiveCompare($1.name ?? "") == .orderedAscending
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let lists = MPMediaQuery.playlists().collections?.compactMap { $0 as? MPMediaPlaylist } ?? []
+            let sorted = lists.sorted {
+                ($0.name ?? "").localizedCaseInsensitiveCompare($1.name ?? "") == .orderedAscending
+            }
+            DispatchQueue.main.async { self?.playlists = sorted }
         }
     }
 
@@ -136,20 +161,27 @@ final class MusicPlayerManager: ObservableObject {
         guard authState == .authorized else { return }
         currentPlaylist = playlist
         currentTracks = []
-        let sort = trackSort
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let items = playlist.items
-            guard let self else { return }
-            let ordered = self.applySort(items, by: sort)
-            DispatchQueue.main.async { self.currentTracks = ordered }
-        }
+        sortTracks(of: playlist, by: trackSort)
     }
 
     /// Sıralamayı değiştirir, yüklü listeyi yeniden dizer.
     func setSort(_ sort: TrackSort) {
         trackSort = sort
         guard let list = currentPlaylist else { return }
-        currentTracks = applySort(list.items, by: sort)
+        sortTracks(of: list, by: sort)
+    }
+
+    /// Arka planda sırala; bu arada başka liste/sıralama seçildiyse eski sonucu at.
+    private func sortTracks(of playlist: MPMediaPlaylist, by sort: TrackSort) {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let ordered = Self.applySort(playlist.items, by: sort)
+            DispatchQueue.main.async {
+                guard let self,
+                      self.currentPlaylist?.persistentID == playlist.persistentID,
+                      self.trackSort == sort else { return }
+                self.currentTracks = ordered
+            }
+        }
     }
 
     /// İleri/geri sar: 0...1 oranını süreye çevirir.
@@ -161,21 +193,23 @@ final class MusicPlayerManager: ObservableObject {
         elapsed = time
         progress = clamped
     }
-    func playTrack(_ item: MPMediaItem, in playlist: MPMediaPlaylist) {
-        guard authState == .authorized else { return }
-        player.setQueue(with: playlist)
-        player.nowPlayingItem = item
+
+    /// Seçilen parçadan başlayarak, ekranda görünen sırayla çalar
+    /// (sıralama "İsim" ise sonraki parça da isim sırasına göre gelir).
+    func playTrack(at index: Int) {
+        guard authState == .authorized, currentTracks.indices.contains(index) else { return }
+        player.setQueue(with: MPMediaItemCollection(items: currentTracks))
+        player.nowPlayingItem = currentTracks[index]
         player.play()
         refreshNowPlaying()
     }
 
     /// Varsayılan: eklenme tarihi azalan (Apple Music davranışı).
-    /// Tarihi eksik parçalar en alta düşer, liste bozulmaz.
-    private func applySort(_ items: [MPMediaItem], by sort: TrackSort) -> [MPMediaItem] {
+    private static func applySort(_ items: [MPMediaItem], by sort: TrackSort) -> [MPMediaItem] {
         switch sort {
         case .dateAddedDesc:
             return items.sorted {
-                ($0.dateAdded ?? .distantPast) > ($1.dateAdded ?? .distantPast)
+                $0.dateAdded > $1.dateAdded
             }
         case .titleAZ:
             return items.sorted {
@@ -233,16 +267,27 @@ final class MusicPlayerManager: ObservableObject {
     }
 
     private func refreshPlaybackState() {
-        isPlaying = (player.playbackState == .playing)
+        let playing = (player.playbackState == .playing)
+        isPlaying = playing
+        // İlerleme sayacı sadece çalarken yaşar (duraklatınca timer ölür).
+        if playing {
+            ensureProgressTimer()
+        } else {
+            progressTimer?.invalidate()
+            progressTimer = nil
+        }
     }
 
-    /// Parça ilerlemesi (0...1). Sistem çalardan 1 sn'de bir okunur.
-    private func startProgressTimer() {
-        progressTimer?.invalidate()
-        progressTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+    /// Parça ilerlemesi (0...1). Sistem çalardan 1 sn'de bir okunur, toleranslı.
+    /// Sadece çalma sırasında aktif — duraklatınca kurulmaz.
+    private func ensureProgressTimer() {
+        guard progressTimer == nil else { return }
+        let t = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, self.isPlaying, !self.scrubbing else { return }
             self.updateProgress()
         }
+        t.tolerance = 0.25
+        progressTimer = t
     }
 
     private func updateProgress() {
@@ -260,19 +305,30 @@ final class MusicPlayerManager: ObservableObject {
     private func refreshNowPlaying() {
         refreshPlaybackState()
         updateProgress()
-        nowPlayingID = player.nowPlayingItem?.persistentID ?? 0
+        let pid = player.nowPlayingItem?.persistentID ?? 0
+        // Aynı parçaysa artwork'ü yeniden decode etme (CPU/pil).
+        let sameTrack = (pid == nowPlayingID && pid != 0)
+        nowPlayingID = pid
         guard let item = player.nowPlayingItem else {
             title = "Çalan parça yok"
             artist = "Müzik uygulamasında başlatın"
             artwork = nil
+            artworkCacheID = 0
             return
         }
         title = item.title ?? "Bilinmeyen parça"
         artist = item.artist ?? "Bilinmeyen sanatçı"
-        if let art = item.artwork {
-            artwork = art.image(at: CGSize(width: 200, height: 200))
+        if sameTrack && pid == artworkCacheID {
+            return
+        }
+        // Bulut parçalarda kapak geç gelebilir: bulunamadıysa önbelleğe alma,
+        // sonraki bildirimde tekrar denensin.
+        if let image = item.artwork?.image(at: CGSize(width: 144, height: 144)) {
+            artwork = image
+            artworkCacheID = pid
         } else {
             artwork = nil
+            artworkCacheID = 0
         }
     }
 }

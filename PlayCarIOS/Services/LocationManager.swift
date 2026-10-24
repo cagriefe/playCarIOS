@@ -21,16 +21,44 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var lastError: String?
 
     private let manager = CLLocationManager()
+    /// Navigasyon aktifken tam güç, değilken tasarruflu profil.
+    private var navigationActive = false
+    private var lastPublishedSpeedKmh: Double = -1
+    private var lastPublishedHeading: Double = -1
 
     override init() {
         super.init()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         manager.activityType = .automotiveNavigation
+        // Otomatik duraklatma kapalı: iOS kırmızı ışıkta/trafikte GPS'i durdurur
+        // ve kendiliğinden geri AÇMAZ — hız ibresi ve navigasyon donar.
+        manager.pausesLocationUpdatesAutomatically = false
+        // Mesafe filtresi yok: filtre varken araç durduğunda yeni fix gelmez,
+        // hız ibresi son değerde (örn. 8 km/h) takılı kalır.
         manager.distanceFilter = kCLDistanceFilterNone
-        // Hız ibresi için heading gerekli (pusula widget'ı).
-        manager.headingFilter = 1
+        applyPowerProfile()
         syncAuthState(status: manager.authorizationStatus)
+    }
+
+    /// Navigasyon fazına göre güç profili: navigasyonda .bestForNavigation,
+    /// diğer zamanlarda .best (hız ibresi için yeterli).
+    func setNavigationActive(_ active: Bool) {
+        guard navigationActive != active else { return }
+        navigationActive = active
+        applyPowerProfile()
+    }
+
+    private func applyPowerProfile() {
+        if navigationActive {
+            manager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
+            manager.headingFilter = 3
+        } else {
+            manager.desiredAccuracy = kCLLocationAccuracyBest
+            manager.headingFilter = 5
+        }
+        // Arka-plan GPS sadece navigasyonda (yoksa pil biter).
+        manager.allowsBackgroundLocationUpdates = navigationActive
+        manager.showsBackgroundLocationIndicator = navigationActive
     }
 
     func requestPermission() {
@@ -69,16 +97,30 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         lastLocation = loc
 
         let rawSpeed = loc.speed // m/s, <0 ise geçersiz
-        if rawSpeed >= 0 {
-            speedKmh = rawSpeed * 3.6
-        } else {
-            speedKmh = 0
+        let kmh = rawSpeed >= 0 ? rawSpeed * 3.6 : 0
+        // Gereksiz SwiftUI redraw'u engelle: 0.5 km/h altı değişimi yayınlama.
+        // Hız ibresi yine akıcı (GPS zaten 1 Hz), sadece titreme gider.
+        if lastPublishedSpeedKmh < 0 || abs(kmh - lastPublishedSpeedKmh) >= 0.5 || (kmh < 1) != (lastPublishedSpeedKmh < 1) {
+            lastPublishedSpeedKmh = kmh
+            speedKmh = kmh
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         guard newHeading.headingAccuracy >= 0 else { return }
-        headingDegrees = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        let h = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
+        // Pusula redraw'unu kıs: 3° altı değişimi yayınlama (sargı farkı dahil).
+        if lastPublishedHeading < 0 {
+            lastPublishedHeading = h
+            headingDegrees = h
+            return
+        }
+        var delta = abs(h - lastPublishedHeading).truncatingRemainder(dividingBy: 360)
+        if delta > 180 { delta = 360 - delta }
+        if delta >= 3 {
+            lastPublishedHeading = h
+            headingDegrees = h
+        }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

@@ -111,7 +111,7 @@ Bu repo TestFlight'e yüklenebilir durumda. Bu makinede Xcode olmadığı için 
 - **İkon:** 1024×1024 alpha'sız PNG (`Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`). Alphasız olması şart, kontrol edildi.
 - **Launch screen:** otomatik üretiliyor (`UILaunchScreen_Generation`), ek dosya gerekmez.
 - **Privacy manifest** (`PrivacyInfo.xcprivacy`, bundle'a dahil): tracking yok, cihaz dışına veri gönderimi yok, `UserDefaults` için CA92.1 beyanı var. Manifest'siz yükleme 2024'ten beri reddediliyor — eklendi.
-- **Background modes:** sadece `location` bırakıldı. `audio` kaldırıldı çünkü uygulama kendisi ses çalmıyor (sistem çaları yönetiyor); gereksiz mod review sorusu çıkarırdı.
+- **Background modes:** `location` + `audio`. `audio`, navigasyonun Türkçe sesli yönlendirmesinin ekran kilitliyken / uygulama arka plandayken de okunabilmesi için gerekli (review gerekçesi: turn-by-turn sesli navigasyon).
 - **Landscape-only:** Info.plist + AppDelegate kilidi. iPad'de de landscape.
 
 ### Test notları (Beta App Review / test kullanıcıları için)
@@ -126,7 +126,6 @@ Bu repo TestFlight'e yüklenebilir durumda. Bu makinede Xcode olmadığı için 
 
 ## Bilinen limitler / sonraki adımlar
 
-- Rota çizimi + turn-by-turn yok (MapKit `MKDirections` ile eklenebilir).
 - Çevrimdışı harita yok.
 - Hız limiti otomatik değil (manuel). Gerçek veri için harici kaynak (örn. OpenStreetMap) gerekir.
 - CarPlay entegrasyonu yok — bu uygulama iPhone'u CarPlay gibi gösterir, gerçek `CarPlay.framework` ayrı entitlement ister.

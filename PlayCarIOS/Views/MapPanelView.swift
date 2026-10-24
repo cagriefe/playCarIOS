@@ -24,7 +24,6 @@ struct MapPanelView: View {
     @State private var cameraTarget: CLLocationCoordinate2D?
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
-    @State private var is3D = false
     @AppStorage("showTraffic") private var showTraffic = true
     @State private var followMode: MapFollowMode = .follow
     @State private var showFavorites = false
@@ -50,7 +49,6 @@ struct MapPanelView: View {
                 userLocation: locationManager.lastLocation?.coordinate,
                 selectedPlace: $selectedPlace,
                 cameraTarget: $cameraTarget,
-                is3D: $is3D,
                 showTraffic: showTraffic,
                 followMode: $followMode,
                 favorites: favorites.favorites,
@@ -121,7 +119,6 @@ struct MapPanelView: View {
                     Spacer(minLength: 76)
                     VStack(spacing: 5) {
                         railButton(icon: locationIcon, active: followMode != .none, action: recenter)
-                        railButton(icon: is3D ? "view.3d" : "view.2d", active: is3D) { is3D.toggle() }
                         railButton(icon: "car.fill", active: showTraffic) { showTraffic.toggle() }
                         railButton(icon: mapStyleLight ? "sun.max.fill" : "moon.fill", active: false) { mapStyleLight.toggle() }
                         railButton(icon: "star.fill", active: false) { showFavorites = true }
@@ -298,6 +295,14 @@ struct MapPanelView: View {
                 initialCenter = loc.coordinate
             }
             nav.updateLocation(loc)
+            #if DEBUG
+            if let target = DebugNav.target, !DebugNav.started {
+                DebugNav.started = true
+                let item = MKMapItem(placemark: MKPlacemark(coordinate: target))
+                item.name = "Test Hedef"
+                startPreview(for: item)
+            }
+            #endif
         }
         .onChange(of: mapTapTick) {
             // Klavye açıkken haritaya dokunmak klavyeyi kapatır (Apple Haritalar gibi).
@@ -358,6 +363,11 @@ struct MapPanelView: View {
                 // Önizleme: tüm rota kadraja alınır, takip bırakılır.
                 followMode = .none
                 overviewRoute = nav.route
+                #if DEBUG
+                if DebugNav.target != nil {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) { nav.start() }
+                }
+                #endif
             case .navigating:
                 selectedPlace = nil
                 followMode = .heading
@@ -611,12 +621,11 @@ struct MapPanelView: View {
 ///   araç içinde pusula metal yüzünden sapar — konum noktası ekranın alt
 ///   kısmında durur, zoom manevra mesafesine göre kendiliğinden ayarlanır.
 /// - Kaydırma takibi bırakır, iki parmakla zoom takibi bozmaz.
-/// - Döndürme / yatırma serbest; mekana dokunma ve uzun basıp işaretleme var.
+/// - Harita hep 2D (tepeden); döndürme serbest, mekana dokunma ve uzun basıp işaretleme var.
 struct CarMapView: UIViewRepresentable {
     var userLocation: CLLocationCoordinate2D?
     @Binding var selectedPlace: MKMapItem?
     @Binding var cameraTarget: CLLocationCoordinate2D?
-    @Binding var is3D: Bool
     var showTraffic: Bool
     @Binding var followMode: MapFollowMode
     var favorites: [FavoritePlace]
@@ -650,12 +659,12 @@ struct CarMapView: UIViewRepresentable {
         map.showsUserLocation = true
         map.showsCompass = false // kendi pusula butonumuz ray altında
         map.showsScale = true
-        map.isPitchEnabled = true
+        // Harita her zaman 2D (tepeden): yatırma kapalı, döndürme açık.
+        map.isPitchEnabled = false
         map.isRotateEnabled = true
         map.selectableMapFeatures = [.pointsOfInterest]
         map.overrideUserInterfaceStyle = mapStyleLight ? .light : .dark
         map.setUserTrackingMode(Self.trackingMode(for: followMode), animated: false)
-        c.last3D = is3D
         c.lastResetNorthTick = resetNorthTick
 
         let tap = UITapGestureRecognizer(target: c, action: #selector(Coordinator.handleTap(_:)))
@@ -708,7 +717,7 @@ struct CarMapView: UIViewRepresentable {
             map.setUserTrackingMode(.none, animated: false)
             let cam = map.camera
             let altitude = (300...4000).contains(cam.altitude) ? cam.altitude : 1200
-            let newCam = MKMapCamera(lookingAtCenter: target, fromDistance: altitude, pitch: cam.pitch, heading: cam.heading)
+            let newCam = MKMapCamera(lookingAtCenter: target, fromDistance: altitude, pitch: 0, heading: cam.heading)
             map.setCamera(newCam, animated: true)
             DispatchQueue.main.async { cameraTarget = nil }
         } else if let first = initialCenter {
@@ -731,10 +740,9 @@ struct CarMapView: UIViewRepresentable {
         let navFollow = isNavigating && followMode != .none
         if navFollow {
             if map.userTrackingMode != .none { map.setUserTrackingMode(.none, animated: false) }
-            if !c.navFollowing || is3D != c.last3D {
-                // Sürüş kamerasına ilk geçiş (veya 2D/3D değişti): hemen uygula.
+            if !c.navFollowing {
+                // Sürüş kamerasına ilk geçiş: hemen uygula.
                 c.navFollowing = true
-                c.last3D = is3D
                 c.applyNavCamera(map, location: map.userLocation.location, duration: 0.6)
             } else if abs(c.lastNavAltitude - navAltitude) > 1 {
                 // Manevra mesafesi bandı değişti: zoom'u yumuşakça güncelle.
@@ -743,12 +751,6 @@ struct CarMapView: UIViewRepresentable {
         } else {
             c.navFollowing = false
             c.navFollowingHasHeading = false
-            if is3D != c.last3D {
-                c.last3D = is3D
-                let cam = map.camera
-                cam.pitch = is3D ? 60 : 0
-                map.setCamera(cam, animated: true)
-            }
             let desired = Self.trackingMode(for: followMode)
             if map.userTrackingMode != desired {
                 map.setUserTrackingMode(desired, animated: true)
@@ -758,7 +760,9 @@ struct CarMapView: UIViewRepresentable {
 
     private func updateAnnotations(_ map: MKMapView, _ c: Coordinator) {
         // Seçili yer + favori pin'leri — SADECE değişince yeniden kur.
-        let selectedKey: String? = selectedPlace.map {
+        // Rota varken seçili yer iğnesi yerine varış bayrağı gösterilir.
+        let shownPlace = route == nil ? selectedPlace : nil
+        let selectedKey: String? = shownPlace.map {
             "\($0.placemark.coordinate.latitude),\($0.placemark.coordinate.longitude),\($0.name ?? "")"
         }
         let favKey = favorites.map(\.id.uuidString).joined(separator: "|")
@@ -775,7 +779,7 @@ struct CarMapView: UIViewRepresentable {
             ann.subtitle = fav.address
             map.addAnnotation(ann)
         }
-        if let item = selectedPlace {
+        if let item = shownPlace {
             // Haritadaki mekan seçimini kaldır, yerine kırmızı iğne koy.
             for sel in map.selectedAnnotations where sel is MKMapFeatureAnnotation {
                 map.deselectAnnotation(sel, animated: false)
@@ -800,15 +804,21 @@ struct CarMapView: UIViewRepresentable {
         guard routeID != c.lastRouteID else { return }
         c.lastRouteID = routeID
         map.removeOverlays(map.overlays)
+        map.removeAnnotations(map.annotations.filter { $0 is DestinationAnnotation })
         if let route {
             let casing = RouteCasingPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
             map.addOverlay(casing, level: .aboveRoads)
             map.addOverlay(route.polyline, level: .aboveRoads)
+            // Varış bayrağı: rota boyunca hedef her zaman görünür.
+            let n = route.polyline.pointCount
+            if n > 0 {
+                map.addAnnotation(DestinationAnnotation(coordinate: route.polyline.points()[n - 1].coordinate))
+            }
         }
     }
 
     private static func configuration(traffic: Bool) -> MKMapConfiguration {
-        let config = MKStandardMapConfiguration(elevationStyle: .realistic, emphasisStyle: .default)
+        let config = MKStandardMapConfiguration(elevationStyle: .flat, emphasisStyle: .default)
         config.showsTraffic = traffic
         return config
     }
@@ -828,7 +838,6 @@ struct CarMapView: UIViewRepresentable {
     final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var parent: CarMapView
         var isUpdating = false
-        var last3D = false
         var lastTraffic = true
         var lastSelectedKey: String?
         var lastFavKey = ""
@@ -898,26 +907,27 @@ struct CarMapView: UIViewRepresentable {
         // MARK: Sürüş kamerası
 
         func applyNavCamera(_ map: MKMapView, location: CLLocation?, duration: TimeInterval) {
-            guard let loc = location else { return }
+            guard let loc = location, map.bounds.height > 0 else { return }
             // Yön: hareket halindeyken GPS gidiş yönü; dururken son yön korunur.
             if loc.course >= 0, loc.speed > 1.5 {
                 lastNavHeading = loc.course
             } else if !navFollowingHasHeading {
                 lastNavHeading = map.camera.heading
-                navFollowingHasHeading = true
             }
-            let altitude: Double
+            navFollowingHasHeading = true
+            let distance: Double
             if Date() < userZoomUntil {
-                altitude = map.camera.altitude
+                distance = map.camera.centerCoordinateDistance
             } else {
-                altitude = parent.navAltitude > 0 ? parent.navAltitude : 800
+                distance = parent.navAltitude > 0 ? parent.navAltitude : 800
                 lastNavAltitude = parent.navAltitude
             }
-            let pitch: CGFloat = parent.is3D ? 55 : 0
-            // Konum noktası ekranın alt kısmında kalsın: merkezi ileri kaydır.
-            let ahead = altitude * (parent.is3D ? 0.55 : 0.3)
+            // Konum noktası ekranın alt-orta kısmında dursun (≈ %70):
+            // ekranda istenen kaydırmayı GERÇEK ölçekten metreye çevir.
+            let screenOffset = Double(map.bounds.height) * 0.2
+            let ahead = Self.metersPerPoint(map, atDistance: distance) * screenOffset
             let center = Self.coordinate(loc.coordinate, movedBy: ahead, bearing: lastNavHeading)
-            let cam = MKMapCamera(lookingAtCenter: center, fromDistance: altitude, pitch: pitch, heading: lastNavHeading)
+            let cam = MKMapCamera(lookingAtCenter: center, fromDistance: distance, pitch: 0, heading: lastNavHeading)
             UIView.animate(
                 withDuration: duration,
                 delay: 0,
@@ -925,6 +935,18 @@ struct CarMapView: UIViewRepresentable {
             ) {
                 map.camera = cam
             }
+        }
+
+        /// Hedef kamera mesafesinde ekranın bir noktasının kaç metre olduğu.
+        /// Mevcut görünümün ortasından ölçülür, mesafe oranıyla ölçeklenir.
+        private static func metersPerPoint(_ map: MKMapView, atDistance target: Double) -> Double {
+            let mid = CGPoint(x: map.bounds.midX, y: map.bounds.midY)
+            let a = map.convert(CGPoint(x: mid.x - 50, y: mid.y), toCoordinateFrom: map)
+            let b = map.convert(CGPoint(x: mid.x + 50, y: mid.y), toCoordinateFrom: map)
+            let current = MKMapPoint(a).distance(to: MKMapPoint(b)) / 100
+            let currentDistance = map.camera.centerCoordinateDistance
+            guard current.isFinite, current > 0, currentDistance > 0 else { return 0 }
+            return current * target / currentDistance
         }
 
         var navFollowingHasHeading = false
@@ -968,19 +990,20 @@ struct CarMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            #if DEBUG
+            if parent.isNavigating {
+                let pt = mapView.convert(mapView.userLocation.coordinate, toPointTo: mapView)
+                print(String(format: "PCDBG CAM follow=%@ navFollowing=%d puck=(%.2f, %.2f) dist=%.0f pitch=%.0f heading=%.0f mode=%d",
+                             "\(parent.followMode)", navFollowing ? 1 : 0,
+                             pt.x / max(mapView.bounds.width, 1), pt.y / max(mapView.bounds.height, 1),
+                             mapView.camera.centerCoordinateDistance, mapView.camera.pitch,
+                             mapView.camera.heading, mapView.userTrackingMode.rawValue))
+            }
+            #endif
             let heading = mapView.camera.heading
-            let pitched = mapView.camera.pitch > 10
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                if abs(self.parent.mapHeading - heading) > 1 {
-                    self.parent.mapHeading = heading
-                }
-                // Kullanıcı iki parmakla yatırdı/düzledi: 2D/3D butonu bunu yansıtsın.
-                if !self.navFollowing, pitched != self.parent.is3D,
-                   Date().timeIntervalSince(self.lastUserGesture) < 3 {
-                    self.last3D = pitched
-                    self.parent.is3D = pitched
-                }
+                guard let self, abs(self.parent.mapHeading - heading) > 1 else { return }
+                self.parent.mapHeading = heading
             }
         }
 
@@ -996,6 +1019,17 @@ struct CarMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             if annotation is MKUserLocation || annotation is MKMapFeatureAnnotation { return nil }
+            if annotation is DestinationAnnotation {
+                let id = "destPin"
+                let v = mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView
+                    ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: id)
+                v.annotation = annotation
+                v.glyphImage = UIImage(systemName: "flag.checkered")
+                v.markerTintColor = .systemRed
+                v.displayPriority = .required
+                v.canShowCallout = false
+                return v
+            }
             if annotation is FavoriteAnnotation {
                 let id = "favPin"
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView
@@ -1033,6 +1067,20 @@ struct CarMapView: UIViewRepresentable {
     }
 }
 
+#if DEBUG
+/// Test kancası (sadece DEBUG): `-PCDebugNavTo "lat,lon"` başlatma argümanı
+/// ile açılışta o noktaya rota hesaplanır ve navigasyon kendiliğinden başlar.
+enum DebugNav {
+    static var started = false
+    static let target: CLLocationCoordinate2D? = {
+        guard let raw = UserDefaults.standard.string(forKey: "PCDebugNavTo") else { return nil }
+        let parts = raw.split(separator: ",").compactMap { Double($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 2 else { return nil }
+        return CLLocationCoordinate2D(latitude: parts[0], longitude: parts[1])
+    }()
+}
+#endif
+
 /// Adres metni: "Sokak No, İlçe, İl" (boş parçalar atlanır).
 enum MapPlaceFormat {
     static func address(of pm: CLPlacemark) -> String {
@@ -1049,6 +1097,12 @@ enum MapPlaceFormat {
 final class RouteCasingPolyline: MKPolyline {}
 
 // MARK: - Arama çubuğu
+
+/// Rota varış noktası (seçili yer / favori pin'lerinden bağımsız).
+final class DestinationAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    init(coordinate: CLLocationCoordinate2D) { self.coordinate = coordinate }
+}
 
 /// Favori pin'lerini varsayılan pinden ayırmak için alt sınıf.
 final class FavoriteAnnotation: MKPointAnnotation {}

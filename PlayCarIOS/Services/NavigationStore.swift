@@ -34,7 +34,10 @@ final class NavigationStore: NSObject, ObservableObject {
     private var destinationLocation: CLLocation?
     private var activeRequest: MKDirections?
     private var lastRecalc = Date.distantPast
-    private var lastOffRouteCheck = Date.distantPast
+    private var lastKnownLocation: CLLocation?
+    private var stepGeometry: [StepGeometry] = []
+    private var offRouteStrikes = 0
+    private var silentUpdate = false
     private let speaker = AVSpeechSynthesizer()
     private var voiceWarningSnoozed = false
     private var cachedTurkishVoice: AVSpeechSynthesisVoice?
@@ -64,6 +67,7 @@ final class NavigationStore: NSObject, ObservableObject {
         let c = item.placemark.coordinate
         destinationLocation = CLLocation(latitude: c.latitude, longitude: c.longitude)
         destinationName = item.name ?? "Varış noktası"
+        lastKnownLocation = userLocation
         phase = .calculating
         calculate(from: userLocation) { [weak self] route in
             guard let self else { return }
@@ -72,17 +76,32 @@ final class NavigationStore: NSObject, ObservableObject {
                 self.lastError = "Rota hesaplanamadı. İnterneti kontrol edin."
                 return
             }
-            self.route = route
+            self.setRoute(route)
             self.phase = .preview
             self.refreshPreviewStats()
+            #if DEBUG
+            self.debugDump(route)
+            #endif
         }
     }
 
     func start() {
-        guard phase == .preview, let steps = route?.steps else { return }
-        currentStepIndex = steps.firstIndex(where: { $0.distance > 0 }) ?? 0
+        guard phase == .preview, let route else { return }
+        currentStepIndex = Self.firstDrivableStep(in: route)
+        offRouteStrikes = 0
         phase = .navigating
-        enterCurrentStep(distanceToManeuver: steps[currentStepIndex].distance)
+        // Başlangıç manevrası ("Cezayir Cd.'ye sağa dönün") hemen okunur,
+        // ardından sıradaki manevra mesafesiyle birlikte kuyruğa girer.
+        let startText = route.steps[currentStepIndex].instructions
+        if !startText.isEmpty { speak(startText) }
+        if let loc = lastKnownLocation {
+            // Sadece konumu/mesafeyi hesapla; anonsu aşağıda tek sefer yap.
+            silentUpdate = true
+            updateLocation(loc)
+            silentUpdate = false
+        }
+        enterCurrentStep(distanceToManeuver: nextDistance > 0 ? nextDistance : route.steps[currentStepIndex].distance,
+                         queue: !startText.isEmpty)
     }
 
     func stop(clearDestination: Bool = true) {
@@ -91,6 +110,7 @@ final class NavigationStore: NSObject, ObservableObject {
         speaker.stopSpeaking(at: .immediate)
         releaseAudioSession()
         route = nil
+        stepGeometry = []
         if clearDestination { destination = nil; destinationLocation = nil; destinationName = "" }
         currentStepIndex = 0
         nextInstruction = ""
@@ -102,13 +122,76 @@ final class NavigationStore: NSObject, ObservableObject {
 
     // MARK: - Konum takibi (haritadan her konumda çağrılır)
 
+    /// MapKit adımı: `instructions`, adımın BAŞINDAKİ manevradır
+    /// (adım 1 başlangıçta "… sağa dönün", son adım 0 m "Varış").
+    /// Yani adım i'de sürerken sıradaki manevra adım i+1'in talimatıdır ve
+    /// mesafesi adım i'nin yol boyunca kalan uzunluğudur.
     func updateLocation(_ loc: CLLocation) {
-        guard phase == .navigating, let route, let dest = destinationLocation else { return }
+        lastKnownLocation = loc
+        guard phase == .navigating, let route else { return }
         let steps = route.steps
-        guard steps.indices.contains(currentStepIndex) else { return }
+        guard steps.indices.contains(currentStepIndex), stepGeometry.count == steps.count else { return }
+        // Çok kötü fix'lerle (tünel, kapalı otopark) adım/rota oynatma.
+        guard loc.horizontalAccuracy >= 0, loc.horizontalAccuracy < 100 else { return }
 
-        // Varış: hedefe 40 m'den yakın
-        if loc.distance(from: dest) < 40 {
+        let p = MKMapPoint(loc.coordinate)
+        let current = currentStepIndex
+
+        // Konumu rotaya izdüşür: mevcut adım + önündeki birkaç adım.
+        var bestIdx = current
+        var best = project(p, ontoStep: current) ?? (offset: .greatestFiniteMagnitude, remaining: 0)
+        let upper = min(steps.count - 1, current + 4)
+        if upper > current {
+            for i in (current + 1)...upper {
+                guard let r = project(p, ontoStep: i) else { continue }
+                // İleri atlamak için belirgin şekilde daha yakın olmalı (kavşakta titremesin).
+                if r.offset < best.offset - 3 {
+                    best = r
+                    bestIdx = i
+                }
+            }
+        }
+        // Adımın sonuna geldiysek bir sonrakine geç (0 m'lik nokta adımlarını atla).
+        if best.remaining < 12, let next = nextDrivableStep(after: bestIdx, in: steps),
+           let r = project(p, ontoStep: next) {
+            bestIdx = next
+            best = r
+        }
+
+        // Rotadan sapma: üst üste 3 fix 50 m dışında → yeniden hesapla (10 sn kilit).
+        if best.offset > 50 {
+            offRouteStrikes += 1
+        } else {
+            offRouteStrikes = 0
+        }
+        if offRouteStrikes >= 3, Date().timeIntervalSince(lastRecalc) > 10 {
+            offRouteStrikes = 0
+            lastRecalc = Date()
+            recalculate(from: loc)
+            return
+        }
+        guard best.offset <= 50 else { return }
+
+        nextDistance = best.remaining
+        if bestIdx != currentStepIndex {
+            currentStepIndex = bestIdx
+            if !silentUpdate { enterCurrentStep(distanceToManeuver: best.remaining) }
+        } else if !silentUpdate {
+            announceApproachIfNeeded(speed: loc.speed)
+        }
+        nextInstruction = upcomingInstruction()
+        #if DEBUG
+        print(String(format: "PCDBG NAV step=%d/%d off=%.0fm next=%.0fm instr=%@",
+                     currentStepIndex, steps.count, best.offset, nextDistance, nextInstruction))
+        #endif
+
+        let rest = steps.dropFirst(currentStepIndex + 1).reduce(0) { $0 + $1.distance }
+        distanceRemaining = rest + nextDistance
+
+        // Varış: hedefe 30 m veya son sürülen adımın sonuna 25 m kala.
+        let onFinalLeg = nextDrivableStep(after: currentStepIndex, in: steps) == nil
+        let nearDestination = destinationLocation.map { loc.distance(from: $0) < 30 } ?? false
+        if nearDestination || (onFinalLeg && best.remaining < 25) {
             phase = .arrived
             nextDistance = 0
             distanceRemaining = 0
@@ -116,42 +199,10 @@ final class NavigationStore: NSObject, ObservableObject {
             return
         }
 
-        // Adım ilerlet: mevcut adımın sonuna 35 m'den yakınsa
-        var idx = currentStepIndex
-        while idx + 1 < steps.count,
-              distance(from: loc.coordinate, toEndOf: steps[idx].polyline) < 35 {
-            idx += 1
-        }
-        let current = steps[idx]
-        nextDistance = distance(from: loc.coordinate, toEndOf: current.polyline)
-        if idx != currentStepIndex {
-            currentStepIndex = idx
-            enterCurrentStep(distanceToManeuver: nextDistance)
-        } else {
-            announceApproachIfNeeded(stepLength: current.distance, speed: loc.speed)
-        }
-        nextInstruction = instruction(of: current)
-
-        let rest = steps.dropFirst(currentStepIndex + 1).reduce(0) { $0 + $1.distance }
-        distanceRemaining = rest + nextDistance
-
         // Varış saati: Apple'ın trafik bilgili süresi, kalan mesafe oranında.
-        // Anlık hıza bölmek kırmızı ışıkta/otoyolda ETA'yı zıplatıyordu.
         if route.distance > 0 {
             let fraction = min(max(distanceRemaining / route.distance, 0), 1)
             eta = Date().addingTimeInterval(route.expectedTravelTime * fraction)
-        }
-
-        // Rotadan sapma: 4 sn'de bir kontrol, 60 m dışındaysa yeniden hesapla (12 sn kilit).
-        // Doğruluğu kötü fix'lerle (tünel vb.) yanlış alarm verme.
-        let now = Date()
-        if now.timeIntervalSince(lastOffRouteCheck) > 4, loc.horizontalAccuracy < 50 {
-            lastOffRouteCheck = now
-            if distance(from: loc.coordinate, to: route.polyline) > 60,
-               now.timeIntervalSince(lastRecalc) > 12 {
-                lastRecalc = now
-                recalculate(from: loc)
-            }
         }
     }
 
@@ -159,10 +210,10 @@ final class NavigationStore: NSObject, ObservableObject {
     /// manevraya yaklaştıkça yakınlaşır, uzun düzlükte uzaklaşır.
     func altitudeForNextManeuver() -> Double {
         switch nextDistance {
-        case ..<200: return 350
-        case ..<600: return 600
-        case ..<2000: return 1000
-        default: return 1600
+        case ..<250: return 450
+        case ..<800: return 700
+        case ..<2500: return 1100
+        default: return 1700
         }
     }
 
@@ -187,37 +238,54 @@ final class NavigationStore: NSObject, ObservableObject {
     private func recalculate(from userLocation: CLLocation) {
         calculate(from: userLocation) { [weak self] route in
             guard let self, self.phase == .navigating, let route else { return }
-            self.route = route
-            self.currentStepIndex = route.steps.firstIndex(where: { $0.distance > 0 }) ?? 0
+            self.setRoute(route)
+            self.currentStepIndex = Self.firstDrivableStep(in: route)
             self.speak("Rota yeniden hesaplandı.")
-            self.enterCurrentStep(
-                distanceToManeuver: self.distance(
-                    from: userLocation.coordinate,
-                    toEndOf: route.steps[self.currentStepIndex].polyline
-                ),
-                queue: true
-            )
-            self.updateLocation(userLocation)
+            self.silentUpdate = true
+            self.updateLocation(self.lastKnownLocation ?? userLocation)
+            self.silentUpdate = false
+            self.enterCurrentStep(distanceToManeuver: self.nextDistance, queue: true)
         }
+    }
+
+    private func setRoute(_ route: MKRoute) {
+        self.route = route
+        stepGeometry = route.steps.map { StepGeometry(polyline: $0.polyline) }
     }
 
     private func refreshPreviewStats() {
         guard let route else { return }
         distanceRemaining = route.distance
         eta = Date().addingTimeInterval(route.expectedTravelTime)
-        nextInstruction = route.steps.first(where: { $0.distance > 0 })?.instructions ?? ""
+        let first = Self.firstDrivableStep(in: route)
+        nextInstruction = route.steps.indices.contains(first) ? route.steps[first].instructions : ""
     }
 
-    private func instruction(of step: MKRoute.Step) -> String {
-        step.instructions.isEmpty ? "Devam edin" : step.instructions
+    /// İlk gerçek adım (0 m'lik başlangıç noktası adımını atla).
+    private static func firstDrivableStep(in route: MKRoute) -> Int {
+        route.steps.firstIndex(where: { $0.distance > 0 && $0.polyline.pointCount > 1 }) ?? 0
     }
 
-    /// Yeni adıma girildi: manevra uzaksa mesafesiyle birlikte oku
-    /// ("800 metre sonra, sağa dönün"), yakınsa doğrudan talimatı oku.
+    private func nextDrivableStep(after index: Int, in steps: [MKRoute.Step]) -> Int? {
+        guard index + 1 < steps.count else { return nil }
+        return steps[(index + 1)...].firstIndex(where: { $0.distance > 0 && $0.polyline.pointCount > 1 })
+    }
+
+    /// Sıradaki manevra = mevcut adımdan sonraki adımın talimatı.
+    private func upcomingInstruction() -> String {
+        guard let steps = route?.steps else { return "" }
+        let i = currentStepIndex + 1
+        guard steps.indices.contains(i) else { return "Varış noktası" }
+        let text = steps[i].instructions
+        if text.isEmpty { return "Devam edin" }
+        return text
+    }
+
+    /// Yeni adıma girildi (manevra yapıldı): sıradaki manevrayı oku.
+    /// Uzaksa mesafesiyle ("800 metre sonra, sağa dönün"), yakınsa doğrudan.
     private func enterCurrentStep(distanceToManeuver: Double, queue: Bool = false) {
-        guard phase == .navigating, let steps = route?.steps,
-              steps.indices.contains(currentStepIndex) else { return }
-        let text = instruction(of: steps[currentStepIndex])
+        guard phase == .navigating else { return }
+        let text = upcomingInstruction()
         nextInstruction = text
         announcedApproach = distanceToManeuver < 700
         announcedFinal = distanceToManeuver < 150
@@ -230,9 +298,8 @@ final class NavigationStore: NSObject, ObservableObject {
 
     /// Manevra öncesi hatırlatmalar: ~400 m'de bir kez, son ~100 m'de bir kez.
     /// Hızlıyken son anons biraz daha erken (≈7 sn önce) yapılır.
-    private func announceApproachIfNeeded(stepLength: Double, speed: CLLocationSpeed) {
-        guard steps.indices.contains(currentStepIndex) else { return }
-        let text = instruction(of: steps[currentStepIndex])
+    private func announceApproachIfNeeded(speed: CLLocationSpeed) {
+        let text = upcomingInstruction()
         let finalThreshold = max(100, (speed > 0 ? speed : 0) * 7)
         if !announcedFinal, nextDistance <= finalThreshold {
             announcedFinal = true
@@ -244,10 +311,11 @@ final class NavigationStore: NSObject, ObservableObject {
         }
     }
 
-    private var steps: [MKRoute.Step] { route?.steps ?? [] }
-
     private func speak(_ text: String, queue: Bool = false) {
         guard !muted, !text.isEmpty else { return }
+        #if DEBUG
+        print("PCDBG SPEAK \(text)")
+        #endif
         if !queue { speaker.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: text)
         let voice = bestTurkishVoice()
@@ -304,26 +372,18 @@ final class NavigationStore: NSObject, ObservableObject {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
-    // MARK: - Mesafe yardımcıları
+    // MARK: - Rota geometrisi
 
-    /// Kullanıcı -> polyline son noktası (adım bitimi).
-    private func distance(from coord: CLLocationCoordinate2D, toEndOf polyline: MKPolyline) -> CLLocationDistance {
-        guard polyline.pointCount > 0 else { return .greatestFiniteMagnitude }
-        let end = polyline.points()[polyline.pointCount - 1]
-        return MKMapPoint(coord).distance(to: end)
-    }
-
-    /// Kullanıcı -> polyline'a en kısa mesafe (nokta değil, SEGMENT bazlı).
-    /// Otoyolda rota noktaları yüzlerce metre aralıklı olabilir; sadece
-    /// noktalara bakmak yolun üstündeyken bile "sapma" sanıp rota yeniliyordu.
-    private func distance(from coord: CLLocationCoordinate2D, to polyline: MKPolyline) -> CLLocationDistance {
-        let count = polyline.pointCount
-        guard count > 0 else { return .greatestFiniteMagnitude }
-        let p = MKMapPoint(coord)
-        let pts = polyline.points()
-        if count == 1 { return p.distance(to: pts[0]) }
-        var best = Double.greatestFiniteMagnitude
-        for i in 0..<(count - 1) {
+    /// Konumun adım çizgisine dik uzaklığı ve adımın yol boyunca kalan uzunluğu.
+    /// Kuş uçuşu değil, çizgi üzerinden ölçülür (virajlı yolda doğru mesafe).
+    private func project(_ p: MKMapPoint, ontoStep index: Int) -> (offset: Double, remaining: Double)? {
+        guard stepGeometry.indices.contains(index) else { return nil }
+        let g = stepGeometry[index]
+        let pts = g.points
+        guard pts.count > 1 else { return nil }
+        var bestOffset = Double.greatestFiniteMagnitude
+        var bestAlong = 0.0
+        for i in 0..<(pts.count - 1) {
             let a = pts[i], b = pts[i + 1]
             let dx = b.x - a.x, dy = b.y - a.y
             let len2 = dx * dx + dy * dy
@@ -331,11 +391,58 @@ final class NavigationStore: NSObject, ObservableObject {
             t = min(max(t, 0), 1)
             let proj = MKMapPoint(x: a.x + t * dx, y: a.y + t * dy)
             let d = p.distance(to: proj)
-            if d < best { best = d }
+            if d < bestOffset {
+                bestOffset = d
+                bestAlong = g.cumulative[i] + a.distance(to: proj)
+            }
         }
-        return best
+        return (bestOffset, max(g.length - bestAlong, 0))
     }
 }
+
+/// Adım çizgisinin noktaları + başlangıçtan itibaren birikimli uzunluk (m).
+private struct StepGeometry {
+    let points: [MKMapPoint]
+    let cumulative: [Double]
+    var length: Double { cumulative.last ?? 0 }
+
+    init(polyline: MKPolyline) {
+        let n = polyline.pointCount
+        let ptr = polyline.points()
+        var pts: [MKMapPoint] = []
+        var cum: [Double] = []
+        pts.reserveCapacity(n)
+        cum.reserveCapacity(n)
+        var total = 0.0
+        for i in 0..<n {
+            let pt = ptr[i]
+            if let last = pts.last { total += last.distance(to: pt) }
+            pts.append(pt)
+            cum.append(total)
+        }
+        points = pts
+        cumulative = cum
+    }
+}
+
+#if DEBUG
+extension NavigationStore {
+    func debugDump(_ route: MKRoute) {
+        print("PCDBG ROUTE dist=\(Int(route.distance)) time=\(Int(route.expectedTravelTime)) steps=\(route.steps.count)")
+        for (i, s) in route.steps.enumerated() {
+            let n = s.polyline.pointCount
+            let a = n > 0 ? s.polyline.points()[0].coordinate : kCLLocationCoordinate2DInvalid
+            let b = n > 0 ? s.polyline.points()[n - 1].coordinate : kCLLocationCoordinate2DInvalid
+            print(String(format: "PCDBG STEP %d dist=%.0f pts=%d start=%.5f,%.5f end=%.5f,%.5f '%@'",
+                         i, s.distance, n, a.latitude, a.longitude, b.latitude, b.longitude, s.instructions))
+        }
+        let n = route.polyline.pointCount
+        let pts = route.polyline.points()
+        let coords = (0..<n).map { String(format: "%.6f,%.6f", pts[$0].coordinate.latitude, pts[$0].coordinate.longitude) }
+        print("PCDBG ROUTEPTS " + coords.joined(separator: " "))
+    }
+}
+#endif
 
 // MARK: - AVSpeechSynthesizerDelegate
 

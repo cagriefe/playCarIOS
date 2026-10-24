@@ -9,26 +9,86 @@ struct DashboardView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var musicManager = MusicPlayerManager()
     @StateObject private var telemetry = TelemetryStore()
+    /// Çentik (notch / Dynamic Island) solda mı? Yatayda iOS iki yana da
+    /// aynı güvenli alanı verir; hangi tarafta olduğunu yönelim söyler.
+    @State private var notchOnLeft = false
+    /// Pencereden okunan çentik payı (iPhone 13 Pro yatay: 47 pt).
+    /// ignoresSafeArea uygulanmış GeometryReader bunu 0 bildirir, o yüzden
+    /// doğrudan UIWindow'dan okunur.
+    @State private var notchInset: CGFloat = 0
+
+    private let gap: CGFloat = 8
 
     var body: some View {
         GeometryReader { geo in
-            let contentW = geo.size.width - 24 // 8 padding + 8 spacing
-            HStack(spacing: 8) {
-                MapPanelView(locationManager: locationManager)
+            // Yatayda çentik payı (iPhone 13 Pro: 47 pt). Sadece çentik tarafında
+            // uygulanır; diğer kenarlar ekranın sonuna kadar kullanılır.
+            let notch = notchInset
+            // Harita çentiğin altına uzayabilir (Apple Haritalar gibi); sadece
+            // haritanın üstündeki butonlar çentikten kaçar.
+            let mapLeadingInset = notchOnLeft ? notch : 0
+            // Sağ sütun metin/buton içerir: çentik sağdaysa ondan kaçar.
+            let trailingPad = notchOnLeft ? gap : max(notch - 12, gap)
+            let contentW = geo.size.width - gap - trailingPad
+            HStack(spacing: gap) {
+                MapPanelView(locationManager: locationManager, leadingInset: mapLeadingInset)
                     .frame(width: contentW * 0.65)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .clipShape(UnevenRoundedRectangle(
+                        topLeadingRadius: 0,
+                        bottomLeadingRadius: 0,
+                        bottomTrailingRadius: 16,
+                        topTrailingRadius: 16
+                    ))
 
                 // Sağ sütun sabit: kaydırma yok. Kaydırmalar sadece
                 // medya içindeki liste görünümlerinde (ScrollView + LazyVStack).
                 rightColumn
                     .frame(width: contentW * 0.35)
+                    .padding(.vertical, gap)
             }
-            .padding(8)
+            .padding(.trailing, trailingPad)
+            .frame(width: geo.size.width, height: geo.size.height)
+            .onChange(of: geo.size) { updateNotchSide() }
         }
         .background(Color.black)
         .ignoresSafeArea()
+        // Araç ekranı: ana ekran çizgisi kendiliğinden gizlensin, alt kenardan
+        // yanlışlıkla uygulamadan çıkılmasın (ilk kaydırma çizgiyi gösterir).
+        .persistentSystemOverlays(.hidden)
+        .defersSystemGestures(on: .bottom)
         .preferredColorScheme(.dark)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .onAppear {
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+            updateNotchSide()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            // Arayüz dönüşü bildirimden biraz sonra tamamlanır.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { updateNotchSide() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { updateNotchSide() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            updateNotchSide()
+        }
+    }
+
+    /// landscapeRight = telefonun üstü (çentik) solda.
+    private func updateNotchSide() {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive } ??
+            UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        guard let scene else { return }
+        let left = scene.interfaceOrientation == .landscapeRight
+        let insets = scene.windows.first(where: \.isKeyWindow)?.safeAreaInsets
+            ?? scene.windows.first?.safeAreaInsets ?? .zero
+        let inset = max(insets.left, insets.right)
+        if left != notchOnLeft || inset != notchInset {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                notchOnLeft = left
+                notchInset = inset
+            }
+        }
     }
 
     private var rightColumn: some View {

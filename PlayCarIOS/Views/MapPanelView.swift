@@ -14,6 +14,9 @@ enum MapFollowMode: Equatable {
 /// Bu yüzden trafik + 2D/3D + takip için MKMapView UIViewRepresentable kullanıldı.
 struct MapPanelView: View {
     @ObservedObject var locationManager: LocationManager
+    /// Çentik haritanın solundaysa payı; ray/kartlar çentikten kaçar,
+    /// harita ise ekran kenarına kadar uzanır.
+    var leadingInset: CGFloat = 0
     @StateObject private var searchService = SearchService()
     @StateObject private var favorites = FavoritesStore()
     @StateObject private var nav = NavigationStore()
@@ -61,6 +64,7 @@ struct MapPanelView: View {
                 resetNorthTick: resetNorthTick,
                 isNavigating: nav.phase == .navigating,
                 navAltitude: nav.phase == .navigating ? nav.altitudeForNextManeuver() : 0,
+                overviewLeftPadding: contentLeading + 10,
                 onPickPlace: { item, subtitle in pickPlace(item, subtitle: subtitle) },
                 onDropPin: { coord in dropPin(at: coord) }
             )
@@ -68,7 +72,7 @@ struct MapPanelView: View {
 
             HStack(alignment: .top, spacing: 8) {
                 // Ray soldadır; sütun onun sağında ortalanır (çakışma yok)
-                Spacer(minLength: 100)
+                Spacer(minLength: contentLeading - 12)
                 VStack(spacing: 8) {
                     // Sadece arama çubuğu otomatik gizlenir; izin ve navigasyon
                     // kartları sürüş güvenliği için her zaman görünür kalır.
@@ -146,7 +150,7 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 36)
+            .padding(.leading, railLeading)
             .frame(maxHeight: .infinity)
             .opacity(controlsVisible ? 1 : 0)
             .allowsHitTesting(controlsVisible)
@@ -215,9 +219,9 @@ struct MapPanelView: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.leading, 104)
+            .padding(.leading, contentLeading)
             .padding(.trailing, 12)
-            .padding(.bottom, 24)
+            .padding(.bottom, 16)
             .frame(maxHeight: .infinity, alignment: .bottom)
 
             // Telefon araması kartı: sadece harita panelinde (medya hariç),
@@ -271,7 +275,7 @@ struct MapPanelView: View {
                     }
                 }
                 .padding(.trailing, 12)
-                .padding(.bottom, 24)
+                .padding(.bottom, 16)
                 .frame(maxHeight: .infinity, alignment: .bottom)
             }
         }
@@ -408,6 +412,16 @@ struct MapPanelView: View {
         case .follow: followMode = .heading
         case .heading: followMode = .follow
         }
+    }
+
+    /// Ray: çentik varsa hemen yanında, yoksa kenardan 10 pt içeride.
+    private var railLeading: CGFloat {
+        leadingInset > 0 ? leadingInset + 4 : 10
+    }
+
+    /// Arama sütunu ve alt kartlar rayın sağından başlar (ray 44 + 2×5 pt).
+    private var contentLeading: CGFloat {
+        railLeading + 54 + 10
     }
 
     private var locationIcon: String {
@@ -621,6 +635,8 @@ struct CarMapView: UIViewRepresentable {
     var isNavigating: Bool
     /// Navigasyonda manevraya göre kamera yüksekliği (m). 0 = pasif.
     var navAltitude: Double
+    /// Rota önizlemesinde soldaki ray + çentik payı.
+    var overviewLeftPadding: CGFloat
     var onPickPlace: (MKMapItem, String) -> Void
     var onDropPin: (CLLocationCoordinate2D) -> Void
 
@@ -685,7 +701,7 @@ struct CarMapView: UIViewRepresentable {
             rect = rect.insetBy(dx: -w * 0.15, dy: -h * 0.15)
             map.setUserTrackingMode(.none, animated: false)
             // Üstte arama/rota kartı, solda ray var: rota onların altında kalmasın.
-            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 150, left: 110, bottom: 30, right: 30), animated: true)
+            map.setVisibleMapRect(rect, edgePadding: UIEdgeInsets(top: 150, left: overviewLeftPadding, bottom: 30, right: 30), animated: true)
             DispatchQueue.main.async { overviewRoute = nil }
         } else if let target = cameraTarget {
             // Seçilen yere git: makul bir yakınlıkta ortala.

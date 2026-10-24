@@ -129,3 +129,7 @@ Bu repo TestFlight'e yüklenebilir durumda. Bu makinede Xcode olmadığı için 
 - Çevrimdışı harita yok.
 - Hız limiti otomatik değil (manuel). Gerçek veri için harici kaynak (örn. OpenStreetMap) gerekir.
 - CarPlay entegrasyonu yok — bu uygulama iPhone'u CarPlay gibi gösterir, gerçek `CarPlay.framework` ayrı entitlement ister.
+
+## Lisans
+
+[MIT](LICENSE)

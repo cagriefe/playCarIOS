@@ -6,8 +6,8 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- Uygulama cihaz dışına hiçbir veri göndermez: harita/müzik
-	     tümüyle cihazda çalışır. Bu yüzden collected-data listesi boş. -->
+	<!-- The app sends no data off the device: map and music run
+	     entirely on-device, so the collected-data list is empty. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
@@ -17,7 +17,7 @@
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
-				<!-- CA92.1: sadece uygulamanın kendi ayarları
+				<!-- CA92.1: only the app's own settings
 				     (keepScreenOn, speedLimitKmh) -->
 				<string>CA92.1</string>
 			</array>

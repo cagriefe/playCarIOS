@@ -1,135 +1,87 @@
-# PlayCar — iPhone için CarPlay Benzeri Yatay Dashboard (SwiftUI, iOS 17+)
+# PlayCar — CarPlay-style Landscape Dashboard for iPhone
 
-Türkçe, landscape-only, koyu-tema sürüş paneli: solda harita (%60), sağda hız + medya + telemetri (%40).
+PlayCar turns an iPhone into a CarPlay-like driving dashboard. It is a landscape-only, dark-themed SwiftUI app (iOS 17+): a full-height map with turn-by-turn navigation on the left (65%), and speed, status and media controls on the right (35%).
 
-Xcode ile aç: `PlayCarIOS.xcodeproj` → iPhone simülatör/fiziksel cihaz (iOS 17+), scheme: **PlayCarIOS**.
+The app UI and voice guidance are in Turkish.
 
-## Proposal'dan düzeltilen kritik hatalar
+## Features
 
-Orijinal proposal çalışıyordu ama App Store / gerçek cihazda patlayacak 6 hata vardı. Hepsi düzeltildi:
+- **Map** — `MKMapView` with live traffic, Apple Maps-style follow / heading modes, day/night map toggle, POI tap, long-press to drop a pin, and a compass.
+- **Navigation** — driving routes via `MKDirections`, step-by-step guidance, automatic re-routing when off-route, ETA, and Turkish voice prompts that duck music instead of stopping it.
+- **Search** — `MKLocalSearchCompleter` biased towards Turkey and the current location, with 300 ms debounce.
+- **Favorites** — save, list, navigate to, and delete places (stored on-device).
+- **Speedometer** — GPS speed in km/h with a user-configurable speed limit (30–140 km/h) and color warnings.
+- **Media** — now playing, playlists and tracks from the device music library via `MediaPlayer`, a seekable progress bar, and the system `MPVolumeView` (volume + AirPlay).
+- **Call card** — shows the duration of an ongoing phone call (via `CallKit`'s `CXCallObserver`).
+- **Status row** — clock, date, compass heading and battery level.
+- **Driving mode** — map controls auto-hide after 4 seconds of inactivity; the screen can be kept awake (toggleable).
 
-### 1. `km/s` → `km/h` (kritik birim hatası)
-- Proposal: *"Real-time speed display in `km/s`"*.
-- Gerçek: `CLLocation.speed` **m/s** döner, negatif = geçersiz fix.
-- Fix (`Services/LocationManager.swift:34` + `Views/SpeedometerView.swift`):
-  ```swift
-  speedKmh = rawSpeed >= 0 ? rawSpeed * 3.6 : 0
-  ```
-  Ekranda `km/h` yazılır. `km/s` ile kalsaydı 120 km/h = 33 km/s gibi saçma değer + limit uyarısı hiç tutmazdı.
+## Requirements
 
-### 2. SwiftUI `Map`'te trafik katmanı YOK
-- Proposal: *"Traffic layer enabled"* + SwiftUI `Map` istiyordu.
-- Gerçek: iOS 17 SwiftUI `Map`'te `showsTraffic` yok. Sadece `MKMapView`'da var.
-- Fix (`Views/MapPanelView.swift: CarMapView`): `UIViewRepresentable` ile `MKMapView`, `showsTraffic = true`, `userTrackingMode = .followWithHeading`, 2D/3D pitch toggle, recenter butonu. Trafik toggle'ı kullanıcıya bırakıldı.
+- Xcode 15 or later
+- iOS 17.0+ (iPhone; iPad is supported in landscape)
+- An Apple Developer account to run on a physical device
 
-### 3. Ses slider'ı yasaktı
-- Proposal: *"Volume slider"*.
-- Gerçek: `MPMusicPlayerController.volume` deprecated; custom `Slider` sistem sesini değiştirmez, App Store review'da da sorun çıkarır.
-- Fix (`Views/MediaControlView.swift: MPVolumeViewRepresentable`): sistemin kendi `MPVolumeView`'i kullanıldı (ses + AirPlay route butonu dahil). "Quick-mute" ayrıca eklenmedi çünkü sistem mute API'si yok — doğru davranış budur.
+## Getting started
 
-### 4. MusicKit + MPMusicPlayerController karışıklığı
-- Proposal ikisini aynı anda istiyordu.
-- Gerçek: kütüphane çaları yönetmek için sadece **MediaPlayer** yeter; MusicKit ayrı entitlement / token / abonelik gerektirir.
-- Fix (`Services/MusicPlayerManager.swift`): sadece `MPMusicPlayerController.systemMusicPlayer` + `MPMediaLibrary.requestAuthorization()`. Yetki reddinde fallback UI + "Ayarlar" yönlendirmesi var. MusicKit'e ihtiyaç duyulursa (katalog arama, artwork yüksek çözünürlük) ayrı faz olarak eklenmeli.
+1. Clone the repo and open `PlayCarIOS.xcodeproj`.
+2. In **Signing & Capabilities**, select your own **Team**. Change the bundle identifier (`com.playcar.ios`) to something unique, e.g. `com.<yourname>.playcar`.
+3. Select the **PlayCarIOS** scheme and run on a device or simulator.
 
-### 5. Landscape kilit eksikti
-- Proposal: sadece `isIdleTimerDisabled = true` diyordu.
-- Gerçek: bu sadece ekran kararması. Portrait'e dönmeyi engellemez.
-- Fix:
-  - `Info.plist`: `UISupportedInterfaceOrientations` sadece `LandscapeLeft/Right` (iPhone + iPad), `UIRequiresFullScreen = true`.
-  - `AppDelegate.swift`: `supportedInterfaceOrientationsFor → .landscape`.
-  - Ekran açık tutma kullanıcı ayarına bağlandı (`TelemetryStore.keepScreenOn`, `UserDefaults`), varsayılan ON ama kapatılabilir — sürekli `true` pil + App Store politikası için riskliydi.
+Tips:
 
-### 6. Hız limiti API'si iOS'ta YOK
-- Proposal: *"speed limit/warning color states"* — sanki sistemden geliyormuş gibi.
-- Gerçek: public hız-limiti API'si yok.
-- Fix (`Views/SpeedometerView.swift`): `@AppStorage("speedLimitKmh")` ile kullanıcı ayarlı limit (30–140, Stepper). Renk: normal yeşil, limit-10 turuncu, limit üstü kırmızı + "Hız limitini aştınız!".
+- To test the speedometer and navigation in the simulator, use **Features → Location → City Drive**.
+- The media panel needs music library permission on a real device. In the simulator, "no track playing" is expected.
+- Debug builds accept a `-PCDebugNavTo "lat,lon"` launch argument that starts navigation to the given coordinate on launch.
 
-### Diğer küçük düzeltmeler / eklemeler
-- `Info.plist` Türkçe stringler düzeltildi + eksikler eklendi: `NSLocationAlwaysAndWhenInUseUsageDescription` (opsiyonel arka-plan), `NSMotionUsageDescription`, `UIBackgroundModes (location, audio)`, `CFBundleLocalizations (tr, en)`, `UIUserInterfaceStyle = Dark`.
-- Pusula Türkçe kardinal: `K, KD, D, GD, G, GB, B, KB` (`LocationManager.cardinalDirectionTR`).
-- Pil: `UIDevice.isBatteryMonitoringEnabled = true` açılmadan `batteryLevel` hep -1 döner — `TelemetryStore` init'te açıldı.
-- Arama: `MKLocalSearchCompleter` Türkiye bias (`39.0, 35.0`) + konum etrafında dinamik `updateRegion`, debounce 300ms.
-- Dokunma hedefleri: medya butonları 56–68pt (sürüş için min 44pt üstü).
-- Mimari MVVM korundu: `LocationManager` / `MusicPlayerManager` / `SearchService` / `TelemetryStore` ayrı, View'lar sadece binding.
-
-## Proje yapısı
+## Project structure
 
 ```
-PlayCarIOS.xcodeproj
 PlayCarIOS/
-  PlayCarIOSApp.swift      # @main, idle-timer, dark mode
-  AppDelegate.swift          # landscape kilit
-  Info.plist                 # izinler (TR), landscape, background modes
-  Assets.xcassets/
+  PlayCarIOSApp.swift          # @main, idle timer, dark mode
+  AppDelegate.swift            # landscape orientation lock
+  Info.plist                   # permissions, landscape, background modes
+  PrivacyInfo.xcprivacy        # privacy manifest
   Services/
-    LocationManager.swift    # konum + hız (km/h) + pusula
-    MusicPlayerManager.swift # MediaPlayer, izin, metadata
-    SearchService.swift      # MKLocalSearchCompleter (TR bias)
-    TelemetryStore.swift     # saat/tarih/pil/ekran
+    LocationManager.swift      # location, speed (km/h), compass
+    NavigationStore.swift      # routing, step tracking, re-routing, voice
+    SearchService.swift        # place / address search
+    FavoritesStore.swift       # saved places (UserDefaults)
+    MusicPlayerManager.swift   # music library, playback, metadata
+    CallStore.swift            # ongoing call duration
+    TelemetryStore.swift       # clock, date, battery, keep-screen-on
   Views/
-    DashboardView.swift      # 60/40 split
-    MapPanelView.swift       # MKMapView + arama + kontroller
-    SpeedometerView.swift    # km/h gauge + limit
-    MediaControlView.swift   # artwork + kontroller + MPVolumeView
-    TelemetryBarView.swift   # saat/tarih/pil/pusula
+    DashboardView.swift        # 65/35 split layout + status row
+    MapPanelView.swift         # map, search, navigation cards, favorites
+    SpeedometerView.swift      # speed gauge + limit
+    MediaControlView.swift     # now playing, playlists, tracks, volume
 ```
 
-## Kurulum
+The app follows a simple MVVM structure: each service is an `ObservableObject` with a single responsibility, and views only bind to them.
 
-1. Xcode 15+ ile `PlayCarIOS.xcodeproj`'u aç.
-2. Signing → Team seç, Bundle ID: `com.playcar.ios` (değiştirilebilir).
-3. iPhone (iOS 17+) + landscape. Simülatörde konum: Features → Location → City Drive (hız testi için).
-4. Müzik widget'ı için cihazda Müzik izni ver; simülatörde "Çalan parça yok" görmen normal.
+## Permissions
 
-## İzinler (Info.plist)
-
-| Key | TR açıklama |
+| Key | Purpose |
 |---|---|
-| `NSLocationWhenInUseUsageDescription` | Navigasyon, harita takibi ve hız göstergesi için konum erişimi gereklidir. |
-| `NSLocationAlwaysAndWhenInUseUsageDescription` | Arka planda da hız ve rota takibi için konum erişimi gereklidir. (İsteğe bağlı.) |
-| `NSAppleMusicUsageDescription` | Müzik kontrolü ve çalan parça bilgilerini göstermek için medya arşivi erişimi gereklidir. |
-| `NSMotionUsageDescription` | Sürüş algılama ve hız doğruluğunu artırmak için hareket verisi kullanılır. (İsteğe bağlı.) |
+| `NSLocationWhenInUseUsageDescription` | Map, navigation and speedometer |
+| `NSLocationAlwaysAndWhenInUseUsageDescription` | Optional background speed / route tracking |
+| `NSAppleMusicUsageDescription` | Music controls and now-playing info |
+| `NSMotionUsageDescription` | Optional, improves driving detection |
 
-## TestFlight yayını (hazır)
+Background modes: `location` (speed and navigation while in the background) and `audio` (voice guidance while the screen is locked).
 
-Bu repo TestFlight'e yüklenebilir durumda. Bu makinede Xcode olmadığı için son adım (Archive) sende:
+## Privacy
 
-### Xcode'da ilk kurulum (bir kez)
-1. `PlayCarIOS.xcodeproj` → Signing & Capabilities → **Team** seç (Apple Developer hesabı).
-   Bundle ID: `com.playcar.ios` (başkası almışsa örn. `com.<adın>.playcar` yap).
-2. Scheme: **PlayCarIOS**, destination: **Any iOS Device (arm64)**.
-3. Sürüm: `MARKETING_VERSION = 1.0.0`, build: `CURRENT_PROJECT_VERSION = 1`.
-   Her yeni TestFlight yüklemesinde **build numarasını +1 artır** (aynı sürüm+build iki kez yüklenemez).
+Everything runs on-device. The app does no tracking and sends no data off the device. Favorites and settings are stored in `UserDefaults`.
 
-### Archive → yükleme
-1. `Product → Archive` → bitince Organizer açılır → **Distribute App → App Store Connect → Upload**.
-2. Signing: Automatic, "Strip Swift symbols" işaretli kalsın.
-3. Upload sonrası App Store Connect → TestFlight sekmesinde 5–30 dk içinde build görünür ("Missing Compliance" uyarısı **çıkmayacak** — `ITSAppUsesNonExemptEncryption=false` eklendi, şifreleme kullanılmıyor).
+## Platform notes and limitations
 
-### Bu repo TestFlight için neleri hazır getirdi
-- **İkon:** 1024×1024 alpha'sız PNG (`Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`). Alphasız olması şart, kontrol edildi.
-- **Launch screen:** otomatik üretiliyor (`UILaunchScreen_Generation`), ek dosya gerekmez.
-- **Privacy manifest** (`PrivacyInfo.xcprivacy`, bundle'a dahil): tracking yok, cihaz dışına veri gönderimi yok, `UserDefaults` için CA92.1 beyanı var. Manifest'siz yükleme 2024'ten beri reddediliyor — eklendi.
-- **Background modes:** `location` + `audio`. `audio`, navigasyonun Türkçe sesli yönlendirmesinin ekran kilitliyken / uygulama arka plandayken de okunabilmesi için gerekli (review gerekçesi: turn-by-turn sesli navigasyon).
-- **Landscape-only:** Info.plist + AppDelegate kilidi. iPad'de de landscape.
+- **Speed limits are manual.** iOS has no public speed-limit API, so the limit is set by the user.
+- **No volume slider or mute.** Setting the system volume from a custom slider is not allowed on iOS, so the system `MPVolumeView` is used instead.
+- **Calls can't be controlled.** Third-party apps can't answer, end, or see the caller of a phone call. The app only shows the call duration.
+- **Not real CarPlay.** The app makes the iPhone screen look like CarPlay. Real CarPlay support (`CarPlay.framework`) needs a separate entitlement from Apple.
+- No offline maps.
 
-### Test notları (Beta App Review / test kullanıcıları için)
-- Uygulama **sadece yatay** çalışır; dikeyde açılmaz (tasarım gereği).
-- Hız göstergesi gerçek GPS ister: test için simülatörde `Features → Location → City Drive`.
-- Müzik widget'ı cihazda Apple Music / arşiv izni ister; simülatörde "Çalan parça yok" normaldir.
-- Harici (public) TestFlight grubu açarsan gizlilik politikası URL'si zorunlu — dahili testte gerekmez.
-
-### Bilinen review riskleri
-- Arka-plan konum (`location` modu): incelemede "neden?" diye sorulabilir. Gerekçe: sürüş sırasında hız takibi. Gerekirse modu Info.plist'ten silip sadece ön-plan konuma düşürebilirsin (hız ibresi arka-planda durur).
-- Ekranı açık tutma (`isIdleTimerDisabled`): kullanıcı tarafından kapatılabilir toggle var, varsayılan açık.
-
-## Bilinen limitler / sonraki adımlar
-
-- Çevrimdışı harita yok.
-- Hız limiti otomatik değil (manuel). Gerçek veri için harici kaynak (örn. OpenStreetMap) gerekir.
-- CarPlay entegrasyonu yok — bu uygulama iPhone'u CarPlay gibi gösterir, gerçek `CarPlay.framework` ayrı entitlement ister.
-
-## Lisans
+## License
 
 [MIT](LICENSE)

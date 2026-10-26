@@ -4,6 +4,16 @@ import SwiftUI
 struct PlayCarIOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    init() {
+        // MapKit rota talimatlarını ve arama sonuçlarını uygulamanın dilinde
+        // döndürür. iPhone İngilizce olsa da navigasyon Türkçe konuşsun diye
+        // uygulamanın dili Türkçe'ye sabitlenir (sadece bu uygulama etkilenir).
+        let languages = UserDefaults.standard.stringArray(forKey: "AppleLanguages") ?? []
+        if languages.first?.hasPrefix("tr") != true {
+            UserDefaults.standard.set(["tr-TR"] + languages.filter { !$0.hasPrefix("tr") }, forKey: "AppleLanguages")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             DashboardView()

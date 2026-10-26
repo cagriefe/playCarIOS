@@ -20,6 +20,10 @@ final class NavigationStore: NSObject, ObservableObject {
     @Published private(set) var destinationName = ""
     @Published private(set) var currentStepIndex = 0
     @Published private(set) var nextInstruction = ""
+    @Published private(set) var nextManeuver: Maneuver = .straight
+    /// Sıradaki manevradan hemen sonra (< 200 m) gelen manevra: "Ardından …".
+    @Published private(set) var thenInstruction: String?
+    @Published private(set) var thenManeuver: Maneuver?
     @Published private(set) var nextDistance: Double = 0
     @Published private(set) var distanceRemaining: Double = 0
     @Published private(set) var eta: Date?
@@ -37,6 +41,7 @@ final class NavigationStore: NSObject, ObservableObject {
     private var lastRecalc = Date.distantPast
     private var lastKnownLocation: CLLocation?
     private var stepGeometry: [StepGeometry] = []
+    private var stepManeuvers: [Maneuver] = []
     private var offRouteStrikes = 0
     private var silentUpdate = false
     private let speaker = AVSpeechSynthesizer()
@@ -113,9 +118,13 @@ final class NavigationStore: NSObject, ObservableObject {
         releaseAudioSession()
         route = nil
         stepGeometry = []
+        stepManeuvers = []
         if clearDestination { destination = nil; destinationLocation = nil; destinationName = "" }
         currentStepIndex = 0
         nextInstruction = ""
+        nextManeuver = .straight
+        thenInstruction = nil
+        thenManeuver = nil
         nextDistance = 0
         distanceRemaining = 0
         eta = nil
@@ -181,7 +190,7 @@ final class NavigationStore: NSObject, ObservableObject {
         } else if !silentUpdate {
             announceApproachIfNeeded(speed: loc.speed)
         }
-        nextInstruction = upcomingInstruction()
+        refreshUpcoming()
         #if DEBUG
         print(String(format: "PCDBG NAV step=%d/%d off=%.0fm next=%.0fm instr=%@",
                      currentStepIndex, steps.count, best.offset, nextDistance, nextInstruction))
@@ -253,6 +262,16 @@ final class NavigationStore: NSObject, ObservableObject {
     private func setRoute(_ route: MKRoute) {
         self.route = route
         stepGeometry = route.steps.map { StepGeometry(polyline: $0.polyline) }
+        stepManeuvers = route.steps.indices.map { i in
+            ManeuverClassifier.classify(
+                instruction: route.steps[i].instructions,
+                turnAngle: turnAngle(into: i),
+                isLast: i == route.steps.count - 1
+            )
+        }
+        #if DEBUG
+        print("PCDBG MANEUVERS " + stepManeuvers.enumerated().map { "\($0.offset):\($0.element)" }.joined(separator: " "))
+        #endif
     }
 
     private func refreshPreviewStats() {
@@ -261,6 +280,9 @@ final class NavigationStore: NSObject, ObservableObject {
         eta = Date().addingTimeInterval(route.expectedTravelTime)
         let first = Self.firstDrivableStep(in: route)
         nextInstruction = route.steps.indices.contains(first) ? route.steps[first].instructions : ""
+        nextManeuver = stepManeuvers.indices.contains(first) ? stepManeuvers[first] : .depart
+        thenInstruction = nil
+        thenManeuver = nil
     }
 
     /// İlk gerçek adım (0 m'lik başlangıç noktası adımını atla).
@@ -283,18 +305,66 @@ final class NavigationStore: NSObject, ObservableObject {
         return text
     }
 
+    /// Sıradaki manevra (metin + ikon) ve hemen ardından gelen manevra.
+    /// Adım i+1'in talimatı sıradaki manevradır; adım i+1'in uzunluğu
+    /// sıradaki ile ondan sonraki manevra arasındaki mesafedir.
+    private func refreshUpcoming() {
+        nextInstruction = upcomingInstruction()
+        let i = currentStepIndex + 1
+        nextManeuver = stepManeuvers.indices.contains(i) ? stepManeuvers[i] : .arrive
+        var thenText: String?
+        var thenMan: Maneuver?
+        if let steps = route?.steps, steps.indices.contains(i + 1), steps[i].distance < 200 {
+            let raw = steps[i + 1].instructions
+            let isLast = i + 1 == steps.count - 1
+            if !raw.isEmpty || isLast {
+                thenText = raw.isEmpty ? "Varış noktası" : raw
+                thenMan = stepManeuvers.indices.contains(i + 1) ? stepManeuvers[i + 1] : nil
+            }
+        }
+        if thenInstruction != thenText { thenInstruction = thenText }
+        if thenManeuver != thenMan { thenManeuver = thenMan }
+    }
+
+    /// Son anonsa yakın manevrayı ekle: "Sağa dönün, ardından sola dönün".
+    private func withThen(_ text: String) -> String {
+        guard let then = thenInstruction, !text.isEmpty else { return text }
+        let tr = Locale(identifier: "tr_TR")
+        let lowered = then.prefix(1).lowercased(with: tr) + then.dropFirst()
+        return "\(text), ardından \(lowered)"
+    }
+
+    /// Adım `index`'in başındaki dönüş açısı: önceki sürülebilir adımın son
+    /// ~30 m'lik yönü ile bu adımın ilk ~30 m'lik yönü arasındaki fark.
+    private func turnAngle(into index: Int) -> Double? {
+        guard index > 0, stepGeometry.indices.contains(index) else { return nil }
+        var p = index - 1
+        while p >= 0, stepGeometry[p].length < 1 { p -= 1 }
+        guard p >= 0 else { return nil }
+        let incoming = stepGeometry[p], outgoing = stepGeometry[index]
+        guard outgoing.length >= 1,
+              let inBearing = ManeuverClassifier.bearing(
+                from: incoming.point(at: max(incoming.length - 30, 0)),
+                to: incoming.point(at: incoming.length)),
+              let outBearing = ManeuverClassifier.bearing(
+                from: outgoing.point(at: 0),
+                to: outgoing.point(at: min(30, outgoing.length)))
+        else { return nil }
+        return ManeuverClassifier.turnAngle(inBearing: inBearing, outBearing: outBearing)
+    }
+
     /// Yeni adıma girildi (manevra yapıldı): sıradaki manevrayı oku.
     /// Uzaksa mesafesiyle ("800 metre sonra, sağa dönün"), yakınsa doğrudan.
     private func enterCurrentStep(distanceToManeuver: Double, queue: Bool = false) {
         guard phase == .navigating else { return }
-        let text = upcomingInstruction()
-        nextInstruction = text
+        refreshUpcoming()
+        let text = nextInstruction
         announcedApproach = distanceToManeuver < 700
         announcedFinal = distanceToManeuver < 150
         if distanceToManeuver >= 150 {
             speak("\(NavFormat.spokenDistance(distanceToManeuver)) sonra, \(text)", queue: queue)
         } else {
-            speak(text, queue: queue)
+            speak(withThen(text), queue: queue)
         }
     }
 
@@ -306,7 +376,7 @@ final class NavigationStore: NSObject, ObservableObject {
         if !announcedFinal, nextDistance <= finalThreshold {
             announcedFinal = true
             announcedApproach = true
-            speak(text)
+            speak(withThen(text))
         } else if !announcedApproach, nextDistance <= 400 {
             announcedApproach = true
             speak("\(NavFormat.spokenDistance(nextDistance)) sonra, \(text)")
@@ -407,6 +477,19 @@ private struct StepGeometry {
     let points: [MKMapPoint]
     let cumulative: [Double]
     var length: Double { cumulative.last ?? 0 }
+
+    /// Çizgi boyunca `distance` metredeki nokta (doğrusal ara değer).
+    func point(at distance: Double) -> MKMapPoint {
+        guard let first = points.first else { return MKMapPoint() }
+        guard distance > 0 else { return first }
+        for i in 1..<points.count where cumulative[i] >= distance {
+            let segment = cumulative[i] - cumulative[i - 1]
+            let t = segment > 0 ? (distance - cumulative[i - 1]) / segment : 0
+            let a = points[i - 1], b = points[i]
+            return MKMapPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
+        }
+        return points[points.count - 1]
+    }
 
     init(polyline: MKPolyline) {
         let n = polyline.pointCount

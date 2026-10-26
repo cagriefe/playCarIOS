@@ -491,39 +491,69 @@ struct MapPanelView: View {
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         case .navigating:
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(nav.nextInstruction.isEmpty ? "Devam edin" : nav.nextInstruction)
-                        .font(.subheadline.bold())
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                    Text(NavFormat.distance(nav.nextDistance))
-                        .font(.headline.bold())
-                        .foregroundStyle(.green)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                HStack(spacing: 8) {
-                    Text("Kalan \(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Spacer(minLength: 0)
-                    Button {
-                        nav.muted.toggle()
-                    } label: {
-                        Image(systemName: nav.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                            .font(.caption)
-                            .frame(width: 36, height: 28)
+            VStack(alignment: .leading, spacing: 6) {
+                // Apple Haritalar düzeni: solda büyük ok + mesafe, sağda talimat.
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(spacing: 2) {
+                        ManeuverIcon(maneuver: nav.nextManeuver, size: 30)
+                        Text(NavFormat.distance(nav.nextDistance))
+                            .font(.headline.bold())
+                            .foregroundStyle(.green)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
-                    Button("Bitir") { nav.stop(); overviewRoute = nil }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.red)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                    .frame(width: 76)
+                    .accessibilityElement(children: .combine)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(nav.nextInstruction.isEmpty ? "Devam edin" : nav.nextInstruction)
+                            .font(.headline)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                        Text("Kalan \(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer(minLength: 0)
+                    VStack(spacing: 6) {
+                        Button {
+                            nav.muted.toggle()
+                        } label: {
+                            Image(systemName: nav.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                                .font(.subheadline)
+                                .frame(width: 44, height: 30)
+                        }
+                        .accessibilityLabel(nav.muted ? "Sesli yönlendirmeyi aç" : "Sesli yönlendirmeyi kapat")
+                        Button("Bitir") { nav.stop(); overviewRoute = nil }
+                            .font(.caption.bold())
+                            .frame(width: 52, height: 30)
+                            .background(Color.red)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
                 }
+
+                if let then = nav.thenInstruction {
+                    HStack(spacing: 6) {
+                        Text("Ardından")
+                            .font(.caption.bold())
+                            .foregroundStyle(.secondary)
+                        if let thenManeuver = nav.thenManeuver {
+                            ManeuverIcon(maneuver: thenManeuver, size: 14)
+                        }
+                        Text(then)
+                            .font(.caption.bold())
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                    .transition(.opacity)
+                }
+
                 // Cihazda Türkçe ses yüklü değilse konuşma yabancı aksanla olur.
                 if nav.turkishVoiceMissing {
                     Button { nav.dismissTurkishVoiceWarning() } label: {

@@ -23,7 +23,8 @@ final class NavigationStore: NSObject, ObservableObject {
     @Published private(set) var nextDistance: Double = 0
     @Published private(set) var distanceRemaining: Double = 0
     @Published private(set) var eta: Date?
-    @Published var muted = false {
+    /// Sesli yönlendirme varsayılan kapalı; her yeni rotada kapalı başlar.
+    @Published var muted = true {
         didSet { if muted { speaker.stopSpeaking(at: .immediate) } }
     }
     @Published var lastError: String?
@@ -63,6 +64,7 @@ final class NavigationStore: NSObject, ObservableObject {
     func previewRoute(to item: MKMapItem, from userLocation: CLLocation) {
         stop(clearDestination: true)
         lastError = nil
+        muted = true
         destination = item
         let c = item.placemark.coordinate
         destinationLocation = CLLocation(latitude: c.latitude, longitude: c.longitude)

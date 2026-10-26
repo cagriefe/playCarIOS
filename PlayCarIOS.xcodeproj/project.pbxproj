@@ -33,6 +33,11 @@
 		B10000000000000000000021 /* QuickDestinationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000021 /* QuickDestinationsView.swift */; };
 		B10000000000000000000022 /* SpeedLimitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000022 /* SpeedLimitStore.swift */; };
 		B10000000000000000000023 /* SpeedLimitBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000023 /* SpeedLimitBadge.swift */; };
+		B10000000000000000000024 /* CarMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000024 /* CarMapView.swift */; };
+		B10000000000000000000025 /* NavBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000025 /* NavBannerView.swift */; };
+		B10000000000000000000026 /* SearchBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000026 /* SearchBarView.swift */; };
+		B10000000000000000000027 /* FavoritesSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000027 /* FavoritesSheetView.swift */; };
+		B10000000000000000000028 /* LocationPermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000028 /* LocationPermissionBanner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +69,11 @@
 		F10000000000000000000021 /* QuickDestinationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickDestinationsView.swift; sourceTree = "<group>"; };
 		F10000000000000000000022 /* SpeedLimitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedLimitStore.swift; sourceTree = "<group>"; };
 		F10000000000000000000023 /* SpeedLimitBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedLimitBadge.swift; sourceTree = "<group>"; };
+		F10000000000000000000024 /* CarMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarMapView.swift; sourceTree = "<group>"; };
+		F10000000000000000000025 /* NavBannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavBannerView.swift; sourceTree = "<group>"; };
+		F10000000000000000000026 /* SearchBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarView.swift; sourceTree = "<group>"; };
+		F10000000000000000000027 /* FavoritesSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesSheetView.swift; sourceTree = "<group>"; };
+		F10000000000000000000028 /* LocationPermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPermissionBanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -132,6 +142,11 @@
 			children = (
 				F10000000000000000000007 /* DashboardView.swift */,
 				F10000000000000000000008 /* MapPanelView.swift */,
+				F10000000000000000000024 /* CarMapView.swift */,
+				F10000000000000000000025 /* NavBannerView.swift */,
+				F10000000000000000000026 /* SearchBarView.swift */,
+				F10000000000000000000027 /* FavoritesSheetView.swift */,
+				F10000000000000000000028 /* LocationPermissionBanner.swift */,
 				F10000000000000000000009 /* SpeedometerView.swift */,
 				F10000000000000000000010 /* MediaControlView.swift */,
 				F10000000000000000000017 /* CallPanelView.swift */,
@@ -227,6 +242,11 @@
 				B10000000000000000000014 /* CallStore.swift in Sources */,
 				B10000000000000000000007 /* DashboardView.swift in Sources */,
 				B10000000000000000000008 /* MapPanelView.swift in Sources */,
+				B10000000000000000000024 /* CarMapView.swift in Sources */,
+				B10000000000000000000025 /* NavBannerView.swift in Sources */,
+				B10000000000000000000026 /* SearchBarView.swift in Sources */,
+				B10000000000000000000027 /* FavoritesSheetView.swift in Sources */,
+				B10000000000000000000028 /* LocationPermissionBanner.swift in Sources */,
 				B10000000000000000000009 /* SpeedometerView.swift in Sources */,
 				B10000000000000000000010 /* MediaControlView.swift in Sources */,
 				B10000000000000000000017 /* CallPanelView.swift in Sources */,

@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "CFBundleDisplayName": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PlayCar"
+          }
+        }
+      }
+    },
     "NSAppleMusicUsageDescription": {
       "localizations": {
         "tr": {
@@ -11,42 +21,12 @@
         }
       }
     },
-    "NSLocationAlwaysAndWhenInUseUsageDescription": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Arka planda konum erişimi hız ve rota yönlendirmesinin çalışmaya devam etmesini sağlar. (İsteğe bağlı.)"
-          }
-        }
-      }
-    },
     "NSLocationWhenInUseUsageDescription": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Navigasyon, harita takibi ve hız göstergesi için konum erişimi gereklidir."
-          }
-        }
-      }
-    },
-    "NSMotionUsageDescription": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hareket verisi sürüş algılamayı ve hız doğruluğunu iyileştirir. (İsteğe bağlı.)"
-          }
-        }
-      }
-    },
-    "CFBundleDisplayName": {
-      "localizations": {
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "PlayCar"
           }
         }
       }

@@ -44,12 +44,8 @@
 	<true/>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>Media library access is needed to control music and show what's playing.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Location access in the background keeps speed and route guidance running. (Optional.)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Location access is needed for navigation, map tracking and the speedometer.</string>
-	<key>NSMotionUsageDescription</key>
-	<string>Motion data improves driving detection and speed accuracy. (Optional.)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

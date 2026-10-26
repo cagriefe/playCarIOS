@@ -12,6 +12,8 @@ enum MediaPanelState: Equatable {
 /// parça -> listeler -> parçalar. Geri butonları her başlıkta.
 struct MediaControlView: View {
     @ObservedObject var player: MusicPlayerManager
+    /// Arama varken kart arama görünümüne geçer (liste durumu korunur).
+    @ObservedObject var calls: CallStore
     @State private var panelState: MediaPanelState = .nowPlaying
     @State private var selectedPlaylist: MPMediaPlaylist?
     /// Parmak bardayken görünen geçici oran (bırakınca çalara işlenir).
@@ -19,41 +21,77 @@ struct MediaControlView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            switch panelState {
-            case .nowPlaying:
-                nowPlayingView
-            case .playlists:
-                playlistsView
-            case .tracks:
-                tracksView
+            if showsCall {
+                CallPanelView(calls: calls)
+            } else {
+                switch panelState {
+                case .nowPlaying:
+                    nowPlayingView
+                case .playlists:
+                    playlistsView
+                case .tracks:
+                    tracksView
+                }
             }
         }
-        .padding(14)
+        .padding(12)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.green.opacity(showsCall ? 0.6 : 0), lineWidth: 1.5)
+        )
         .animation(.easeInOut(duration: 0.2), value: panelState)
+        .animation(.easeInOut(duration: 0.25), value: showsCall)
         .onAppear { if player.authState == .notDetermined { player.requestAuthorization() } }
+    }
+
+    private var showsCall: Bool {
+        calls.inCall && !calls.dismissed
     }
 
     // MARK: - Şimdi çalınıyor
 
-    private var nowPlayingView: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Text("MEDYA")
-                    .font(.caption2.bold())
-                    .foregroundStyle(.secondary)
-                Spacer(minLength: 0)
-                Button {
-                    player.loadPlaylists()
-                    panelState = .playlists
-                } label: {
-                    Label("Listeler", systemImage: "music.note.list")
-                        .font(.caption2.bold())
+    /// Sağ üst köşe: arama gizlenmişse yeşil süre hapı, değilse Listeler.
+    @ViewBuilder
+    private var cornerButton: some View {
+        if calls.inCall {
+            Button { calls.show() } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "phone.fill")
+                    Text(calls.phase == .active || calls.phase == .onHold ? calls.elapsedText : "Arama")
+                        .monospacedDigit()
                 }
+                .font(.caption2.bold())
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(Color.green, in: Capsule())
+                .foregroundStyle(.white)
             }
+            .buttonStyle(.plain)
+        } else {
+            Button {
+                player.loadPlaylists()
+                panelState = .playlists
+            } label: {
+                Image(systemName: "music.note.list")
+                    .font(.subheadline.bold())
+                    .frame(width: 36, height: 36)
+            }
+            .accessibilityLabel("Çalma listeleri")
+        }
+    }
 
+    private var nowPlayingView: some View {
+        VStack(spacing: 6) {
             if player.authState != .authorized {
+                HStack {
+                    Text("MEDYA")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    cornerButton
+                }
                 Text("Parça bilgisi için medya izni gerekir.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -76,9 +114,10 @@ struct MediaControlView: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
+                    cornerButton
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 2)
 
                 // 2. Ortalanmış ilerleme bölümü (bar üstte, süreler altta)
                 VStack(spacing: 2) {
@@ -109,7 +148,7 @@ struct MediaControlView: View {
                                 }
                         )
                     }
-                    .frame(height: 22)
+                    .frame(height: 18)
                     HStack {
                         Text(TrackFormat.duration(displayElapsed))
                         Spacer()
@@ -120,16 +159,16 @@ struct MediaControlView: View {
                     .monospacedDigit()
                 }
 
-                Spacer(minLength: 4)
+                Spacer(minLength: 2)
 
-                // 3. Kontroller (taşmayı önlemek için kompakt: 50/44)
+                // 3. Kontroller (taşmayı önlemek için kompakt: 46/42)
                 HStack(spacing: 24) {
                     Spacer(minLength: 0)
-                    mediaButton(icon: "backward.fill", size: 44) { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 50) {
+                    mediaButton(icon: "backward.fill", size: 42) { player.previous() }
+                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 46) {
                         player.togglePlayPause()
                     }
-                    mediaButton(icon: "forward.fill", size: 44) { player.next() }
+                    mediaButton(icon: "forward.fill", size: 42) { player.next() }
                     Spacer(minLength: 0)
                 }
             }
@@ -345,7 +384,7 @@ struct MediaControlView: View {
                 }
             }
         }
-        .frame(width: 48, height: 48)
+        .frame(width: 44, height: 44)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 

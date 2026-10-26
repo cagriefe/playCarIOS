@@ -2,13 +2,15 @@ import SwiftUI
 
 /// CarPlay Dashboard split düzeni (yatay, katı bölme):
 /// - Sol %65: tam boy harita + navigasyon (yuvarlak köşeli).
-/// - Sağ %35: durum satırı + hız (üst) + müzik (alt, esnek).
+/// - Sağ %35: durum satırı + hız (üst) + favori kişiler + müzik/arama (alt, esnek).
 /// Global üst bar yok — harita üst kenara kadar uzar.
 /// Sağdaki hiçbir widget sol panele taşmaz.
 struct DashboardView: View {
     @StateObject private var locationManager = LocationManager()
     @StateObject private var musicManager = MusicPlayerManager()
     @StateObject private var telemetry = TelemetryStore()
+    @StateObject private var callStore = CallStore()
+    @StateObject private var contacts = FavoriteContactsStore()
     /// Çentik (notch / Dynamic Island) solda mı? Yatayda iOS iki yana da
     /// aynı güvenli alanı verir; hangi tarafta olduğunu yönelim söyler.
     @State private var notchOnLeft = false
@@ -95,7 +97,8 @@ struct DashboardView: View {
         VStack(spacing: 8) {
             miniStatus
             SpeedometerView(location: locationManager)
-            MediaControlView(player: musicManager)
+            FavoriteContactsRow(contacts: contacts, calls: callStore)
+            MediaControlView(player: musicManager, calls: callStore)
         }
     }
 

@@ -20,7 +20,6 @@ struct MapPanelView: View {
     @StateObject private var searchService = SearchService()
     @StateObject private var favorites = FavoritesStore()
     @StateObject private var nav = NavigationStore()
-    @StateObject private var callStore = CallStore()
     @State private var cameraTarget: CLLocationCoordinate2D?
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
@@ -69,33 +68,36 @@ struct MapPanelView: View {
             .ignoresSafeArea()
 
             HStack(alignment: .top, spacing: 8) {
-                // Ray soldadır; sütun onun sağında ortalanır (çakışma yok)
-                Spacer(minLength: contentLeading - 12)
+                // Ray soldadır; sütun onun sağında ortalanır (çakışma yok).
+                // Kontroller gizliyken ray da gizli: kartlar haritanın üstüne
+                // yapışır ve yatayda tüm genişliğe yayılır.
+                Spacer(minLength: controlsVisible ? contentLeading - 12 : max(railLeading - 12, 0))
                 VStack(spacing: 8) {
                     // Sadece arama çubuğu otomatik gizlenir; izin ve navigasyon
                     // kartları sürüş güvenliği için her zaman görünür kalır.
-                    SearchBarView(searchService: searchService, focused: $searchFocused) { completion in
-                        searchService.resolve(completion) { item in
-                            guard let item else { return }
-                            nav.stop()
-                            overviewRoute = nil
-                            selectedPlace = item
-                            selectedSubtitle = completion.subtitle
-                            followMode = .none
-                            cameraTarget = item.placemark.coordinate
+                    if controlsVisible {
+                        SearchBarView(searchService: searchService, focused: $searchFocused) { completion in
+                            searchService.resolve(completion) { item in
+                                guard let item else { return }
+                                nav.stop()
+                                overviewRoute = nil
+                                selectedPlace = item
+                                selectedSubtitle = completion.subtitle
+                                followMode = .none
+                                cameraTarget = item.placemark.coordinate
+                            }
+                        } onSave: { completion in
+                            searchService.resolve(completion) { item in
+                                guard let item else { return }
+                                favorites.add(
+                                    name: item.name ?? completion.title,
+                                    address: completion.subtitle,
+                                    coordinate: item.placemark.coordinate
+                                )
+                            }
                         }
-                    } onSave: { completion in
-                        searchService.resolve(completion) { item in
-                            guard let item else { return }
-                            favorites.add(
-                                name: item.name ?? completion.title,
-                                address: completion.subtitle,
-                                coordinate: item.placemark.coordinate
-                            )
-                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                    .opacity(controlsVisible ? 1 : 0)
-                    .allowsHitTesting(controlsVisible)
 
                     if locationManager.authState != .authorized {
                         LocationPermissionBanner(
@@ -107,11 +109,12 @@ struct MapPanelView: View {
                     // Turn-by-turn kartı: sol panelin üstünde, arama altında sabit
                     navBanner
                 }
-                .frame(maxWidth: 360)
+                .frame(maxWidth: controlsVisible ? 360 : .infinity)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
+            .animation(.easeInOut(duration: 0.25), value: controlsVisible)
 
             // Sol ikon rayı (CarPlay sidebar): dikey ortalı yüzen hap
             HStack {
@@ -220,61 +223,6 @@ struct MapPanelView: View {
             .padding(.trailing, 12)
             .padding(.bottom, 16)
             .frame(maxHeight: .infinity, alignment: .bottom)
-
-            // Telefon araması kartı: sadece harita panelinde (medya hariç),
-            // süre + gizleme. Aramayı bitirme iOS'ta uygulamaya kapalı.
-            if callStore.inCall && !callStore.dismissed {
-                HStack {
-                    Spacer(minLength: 0)
-                    VStack {
-                        Spacer(minLength: 0)
-                        VStack(spacing: 10) {
-                            Image(systemName: "phone.circle.fill")
-                                .font(.system(size: 48))
-                                .foregroundStyle(.green)
-                            Text("Arama Sürüyor")
-                                .font(.headline)
-                            Text(callStore.elapsedText)
-                                .font(.system(size: 40, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                            Text("Bitirmek için iPhone çağrı ekranını kullanın")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                            Button("Gizle") { callStore.hide() }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
-                                .frame(minWidth: 140, minHeight: 48)
-                        }
-                        .padding(24)
-                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                        .frame(maxWidth: 320)
-                        Spacer(minLength: 0)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxHeight: .infinity)
-            } else if callStore.inCall {
-                HStack {
-                    Spacer(minLength: 0)
-                    Button { callStore.show() } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "phone.fill")
-                            Text(callStore.elapsedText)
-                                .monospacedDigit()
-                        }
-                        .font(.caption.bold())
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(Color.green)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
-                    }
-                }
-                .padding(.trailing, 12)
-                .padding(.bottom, 16)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-            }
         }
         .onAppear {
             locationManager.requestPermission()
@@ -800,15 +748,22 @@ struct CarMapView: UIViewRepresentable {
 
     private func updateOverlays(_ map: MKMapView, _ c: Coordinator) {
         // Rota çizgisi: beyaz zemin + mavi hat (yüksek kontrast) — SADECE rota değişince.
+        // Trafik açıkken rota yarı saydam çizilir: trafik renkleri içinden görünür.
         let routeID = route.map { ObjectIdentifier($0.polyline) }
-        guard routeID != c.lastRouteID else { return }
+        guard routeID != c.lastRouteID || showTraffic != c.lastRouteTraffic else { return }
         c.lastRouteID = routeID
+        c.lastRouteTraffic = showTraffic
         map.removeOverlays(map.overlays)
         map.removeAnnotations(map.annotations.filter { $0 is DestinationAnnotation })
         if let route {
-            let casing = RouteCasingPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
-            map.addOverlay(casing, level: .aboveRoads)
-            map.addOverlay(route.polyline, level: .aboveRoads)
+            if showTraffic {
+                let faded = RouteTrafficPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
+                map.addOverlay(faded, level: .aboveRoads)
+            } else {
+                let casing = RouteCasingPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
+                map.addOverlay(casing, level: .aboveRoads)
+                map.addOverlay(route.polyline, level: .aboveRoads)
+            }
             // Varış bayrağı: rota boyunca hedef her zaman görünür.
             let n = route.polyline.pointCount
             if n > 0 {
@@ -842,6 +797,7 @@ struct CarMapView: UIViewRepresentable {
         var lastSelectedKey: String?
         var lastFavKey = ""
         var lastRouteID: ObjectIdentifier?
+        var lastRouteTraffic = false
         var lastResetNorthTick = 0
         var navFollowing = false
         var lastNavAltitude: Double = 0
@@ -1045,6 +1001,14 @@ struct CarMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let line = overlay as? RouteTrafficPolyline {
+                let r = MKPolylineRenderer(polyline: line)
+                r.strokeColor = UIColor.systemBlue.withAlphaComponent(0.55)
+                r.lineWidth = 6
+                r.lineCap = .round
+                r.lineJoin = .round
+                return r
+            }
             if overlay is RouteCasingPolyline, let line = overlay as? MKPolyline {
                 let r = MKPolylineRenderer(polyline: line)
                 r.strokeColor = .white
@@ -1095,6 +1059,9 @@ enum MapPlaceFormat {
 
 /// Rota beyaz zemini: mavi hattın altında daha kalın beyaz çizgi.
 final class RouteCasingPolyline: MKPolyline {}
+
+/// Trafik açıkken rota: ince, yarı saydam mavi; alttaki trafik rengi içinden görünür.
+final class RouteTrafficPolyline: MKPolyline {}
 
 // MARK: - Arama çubuğu
 

@@ -12,7 +12,8 @@ The app UI and voice guidance are in Turkish.
 - **Favorites** — save, list, navigate to, and delete places (stored on-device).
 - **Speedometer** — GPS speed in km/h with a user-configurable speed limit (30–140 km/h) and color warnings.
 - **Media** — now playing, playlists and tracks from the device music library via `MediaPlayer`, a seekable progress bar, and the system `MPVolumeView` (volume + AirPlay).
-- **Call card** — shows the duration of an ongoing phone call (via `CallKit`'s `CXCallObserver`).
+- **Favorite contacts** — four one-tap call shortcuts between the speedometer and the media card, picked with the system contact picker (no Contacts permission needed). Long-press to call, replace or remove.
+- **Call card** — when a call rings, is dialing or is active, the media card switches to a call view with status and duration (via `CallKit`'s `CXCallObserver`). Calls placed from a favorite show the contact's name and photo.
 - **Status row** — clock, date, compass heading and battery level.
 - **Driving mode** — map controls auto-hide after 4 seconds of inactivity; the screen can be kept awake (toggleable).
 
@@ -48,13 +49,16 @@ PlayCarIOS/
     SearchService.swift        # place / address search
     FavoritesStore.swift       # saved places (UserDefaults)
     MusicPlayerManager.swift   # music library, playback, metadata
-    CallStore.swift            # ongoing call duration
+    CallStore.swift            # call state (incoming/dialing/active) + duration
+    ContactsStore.swift        # 4 favorite contacts + system contact picker
     TelemetryStore.swift       # clock, date, battery, keep-screen-on
   Views/
     DashboardView.swift        # 65/35 split layout + status row
     MapPanelView.swift         # map, search, navigation cards, favorites
     SpeedometerView.swift      # speed gauge + limit
     MediaControlView.swift     # now playing, playlists, tracks, volume
+    FavoriteContactsRow.swift  # 4 favorite contact avatars
+    CallPanelView.swift        # call view inside the media card
 ```
 
 The app follows a simple MVVM structure: each service is an `ObservableObject` with a single responsibility, and views only bind to them.
@@ -78,7 +82,7 @@ Everything runs on-device. The app does no tracking and sends no data off the de
 
 - **Speed limits are manual.** iOS has no public speed-limit API, so the limit is set by the user.
 - **No volume slider or mute.** Setting the system volume from a custom slider is not allowed on iOS, so the system `MPVolumeView` is used instead.
-- **Calls can't be controlled.** Third-party apps can't answer, end, or see the caller of a phone call. The app only shows the call duration.
+- **Calls can't be controlled.** Third-party apps can't answer, end, or see the caller of a phone call. The app shows call state and duration; answering, ending and speaker are done from the system call banner/screen. Tip: set *Settings › Phone › Incoming Calls* to *Banner* so the dashboard stays visible.
 - **Not real CarPlay.** The app makes the iPhone screen look like CarPlay. Real CarPlay support (`CarPlay.framework`) needs a separate entitlement from Apple.
 - No offline maps.
 

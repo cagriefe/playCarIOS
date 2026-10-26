@@ -22,6 +22,9 @@
 		B10000000000000000000010 /* MediaControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000010 /* MediaControlView.swift */; };
 		B20000000000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* Assets.xcassets */; };
 		B20000000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F40000000000000000000001 /* PrivacyInfo.xcprivacy */; };
+		B10000000000000000000015 /* ContactsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* ContactsStore.swift */; };
+		B10000000000000000000016 /* FavoriteContactsRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* FavoriteContactsRow.swift */; };
+		B10000000000000000000017 /* CallPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000017 /* CallPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +45,9 @@
 		F20000000000000000000001 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F30000000000000000000001 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F40000000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F10000000000000000000015 /* ContactsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000016 /* FavoriteContactsRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteContactsRow.swift; sourceTree = "<group>"; };
+		F10000000000000000000017 /* CallPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallPanelView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +101,7 @@
 				F10000000000000000000012 /* FavoritesStore.swift */,
 				F10000000000000000000013 /* NavigationStore.swift */,
 				F10000000000000000000014 /* CallStore.swift */,
+				F10000000000000000000015 /* ContactsStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -106,6 +113,8 @@
 				F10000000000000000000008 /* MapPanelView.swift */,
 				F10000000000000000000009 /* SpeedometerView.swift */,
 				F10000000000000000000010 /* MediaControlView.swift */,
+				F10000000000000000000017 /* CallPanelView.swift */,
+				F10000000000000000000016 /* FavoriteContactsRow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -193,6 +202,9 @@
 				B10000000000000000000008 /* MapPanelView.swift in Sources */,
 				B10000000000000000000009 /* SpeedometerView.swift in Sources */,
 				B10000000000000000000010 /* MediaControlView.swift in Sources */,
+				B10000000000000000000017 /* CallPanelView.swift in Sources */,
+				B10000000000000000000016 /* FavoriteContactsRow.swift in Sources */,
+				B10000000000000000000015 /* ContactsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

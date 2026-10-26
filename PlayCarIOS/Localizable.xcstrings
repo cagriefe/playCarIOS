@@ -199,6 +199,26 @@
         }
       }
     },
+    "Add Home": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ev Ekle"
+          }
+        }
+      }
+    },
+    "Add Work": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş Ekle"
+          }
+        }
+      }
+    },
     "Add favorite contact": {
       "localizations": {
         "tr": {
@@ -359,6 +379,16 @@
         }
       }
     },
+    "Clear": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temizle"
+          }
+        }
+      }
+    },
     "Close": {
       "localizations": {
         "tr": {
@@ -496,6 +526,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Arama kartını gizle"
+          }
+        }
+      }
+    },
+    "Home": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ev"
           }
         }
       }
@@ -736,12 +776,52 @@
         }
       }
     },
+    "Recents": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son Gidilenler"
+          }
+        }
+      }
+    },
     "Remove": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Remove %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kaldır"
+          }
+        }
+      }
+    },
+    "Remove Home": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ev Etiketini Kaldır"
+          }
+        }
+      }
+    },
+    "Remove Work": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş Etiketini Kaldır"
           }
         }
       }
@@ -829,6 +909,26 @@
         }
       }
     },
+    "Set as Home": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ev Olarak Ayarla"
+          }
+        }
+      }
+    },
+    "Set as Work": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş Olarak Ayarla"
+          }
+        }
+      }
+    },
     "Settings": {
       "localizations": {
         "tr": {
@@ -865,6 +965,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Duruyor"
+          }
+        }
+      }
+    },
+    "Swipe right on a place to set it as Home or Work.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir yeri Ev veya İş yapmak için sağa kaydırın."
           }
         }
       }
@@ -996,6 +1106,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Önce konum bekleniyor…"
+          }
+        }
+      }
+    },
+    "Work": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İş"
           }
         }
       }

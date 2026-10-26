@@ -19,10 +19,14 @@ struct MapPanelView: View {
     var leadingInset: CGFloat = 0
     @StateObject private var searchService = SearchService()
     @StateObject private var favorites = FavoritesStore()
+    @StateObject private var recents = RecentDestinationsStore()
+    @StateObject private var shortcutETA = ShortcutETAService()
     @StateObject private var nav = NavigationStore()
     @State private var cameraTarget: CLLocationCoordinate2D?
     @State private var selectedPlace: MKMapItem?
     @State private var selectedSubtitle = ""
+    /// Önizlenen rotanın adresi: navigasyon başlayınca son hedeflere yazılır.
+    @State private var previewSubtitle = ""
     @AppStorage("showTraffic") private var showTraffic = true
     @State private var followMode: MapFollowMode = .follow
     @State private var showFavorites = false
@@ -97,6 +101,25 @@ struct MapPanelView: View {
                             }
                         }
                         .transition(.move(edge: .top).combined(with: .opacity))
+
+                        if searchFocused {
+                            if searchService.query.trimmingCharacters(in: .whitespaces).isEmpty && !recents.items.isEmpty {
+                                RecentDestinationsList(recents: recents) { destination in
+                                    searchFocused = false
+                                    go(to: destination)
+                                }
+                            }
+                        } else if nav.phase == .idle && selectedPlace == nil {
+                            QuickChipsRow(
+                                favorites: favorites,
+                                recents: recents,
+                                eta: shortcutETA,
+                                onGo: { go(to: $0) },
+                                onSetUp: { showFavorites = true }
+                            )
+                            .onAppear(perform: refreshShortcutETAs)
+                            .transition(.opacity)
+                        }
                     }
 
                     if locationManager.authState != .authorized {
@@ -290,18 +313,7 @@ struct MapPanelView: View {
                 favorites: favorites,
                 onGo: { place in
                     showFavorites = false
-                    let item = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
-                    item.name = place.name
-                    nav.stop()
-                    overviewRoute = nil
-                    selectedPlace = item
-                    selectedSubtitle = place.address
-                    followMode = .none
-                    if locationManager.lastLocation != nil {
-                        startPreview(for: item)
-                    } else {
-                        cameraTarget = place.coordinate
-                    }
+                    go(to: QuickDestination(name: place.name, address: place.address, coordinate: place.coordinate))
                 }
             )
         }
@@ -319,6 +331,9 @@ struct MapPanelView: View {
             case .navigating:
                 selectedPlace = nil
                 followMode = .heading
+                if let coordinate = nav.destinationCoordinate {
+                    recents.add(name: nav.destinationName, address: previewSubtitle, coordinate: coordinate)
+                }
             case .idle:
                 // Navigasyon bitti: takibe dön, haritayı kuzeye çevir.
                 followMode = .follow
@@ -355,7 +370,30 @@ struct MapPanelView: View {
             nav.lastError = String(localized: "Waiting for your location…")
             return
         }
+        previewSubtitle = selectedPlace === item ? selectedSubtitle : ""
         nav.previewRoute(to: item, from: loc)
+    }
+
+    /// Favori / kısayol / son hedef: yeri seç ve rota önizlemesini başlat
+    /// (konum yoksa sadece oraya git).
+    private func go(to destination: QuickDestination) {
+        let item = MKMapItem(placemark: MKPlacemark(coordinate: destination.coordinate))
+        item.name = destination.name
+        nav.stop()
+        overviewRoute = nil
+        selectedPlace = item
+        selectedSubtitle = destination.address
+        followMode = .none
+        if locationManager.lastLocation != nil {
+            startPreview(for: item)
+        } else {
+            cameraTarget = destination.coordinate
+        }
+    }
+
+    private func refreshShortcutETAs() {
+        guard let loc = locationManager.lastLocation else { return }
+        shortcutETA.refresh(for: favorites.shortcuts, from: loc)
     }
 
     /// Apple Haritalar konum butonu: takip yok → takip et → yöne göre döndür → takip et…
@@ -743,7 +781,7 @@ struct CarMapView: UIViewRepresentable {
         let selectedKey: String? = shownPlace.map {
             "\($0.placemark.coordinate.latitude),\($0.placemark.coordinate.longitude),\($0.name ?? "")"
         }
-        let favKey = favorites.map(\.id.uuidString).joined(separator: "|")
+        let favKey = favorites.map { $0.id.uuidString + ($0.kind?.rawValue ?? "") }.joined(separator: "|")
         guard selectedKey != c.lastSelectedKey || favKey != c.lastFavKey else { return }
         c.lastSelectedKey = selectedKey
         c.lastFavKey = favKey
@@ -752,6 +790,7 @@ struct CarMapView: UIViewRepresentable {
         })
         for fav in favorites {
             let ann = FavoriteAnnotation()
+            ann.kind = fav.kind
             ann.coordinate = fav.coordinate
             ann.title = fav.name
             ann.subtitle = fav.address
@@ -1016,13 +1055,13 @@ struct CarMapView: UIViewRepresentable {
                 v.canShowCallout = false
                 return v
             }
-            if annotation is FavoriteAnnotation {
+            if let fav = annotation as? FavoriteAnnotation {
                 let id = "favPin"
                 let v = mapView.dequeueReusableAnnotationView(withIdentifier: id) as? MKMarkerAnnotationView
                     ?? MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: id)
                 v.annotation = annotation
-                v.glyphImage = UIImage(systemName: "star.fill")
-                v.markerTintColor = .systemYellow
+                v.glyphImage = UIImage(systemName: FavoritePlace.icon(for: fav.kind))
+                v.markerTintColor = FavoritePlace.uiColor(for: fav.kind)
                 v.canShowCallout = true
                 v.displayPriority = .required
                 return v
@@ -1102,7 +1141,9 @@ final class DestinationAnnotation: NSObject, MKAnnotation {
 }
 
 /// Favori pin'lerini varsayılan pinden ayırmak için alt sınıf.
-final class FavoriteAnnotation: MKPointAnnotation {}
+final class FavoriteAnnotation: MKPointAnnotation {
+    var kind: PlaceKind?
+}
 
 struct SearchBarView: View {
     @ObservedObject var searchService: SearchService
@@ -1214,29 +1255,45 @@ struct FavoritesSheetView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
-                        ForEach(favorites.favorites) { place in
-                            Button { onGo(place) } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "star.fill")
-                                        .foregroundStyle(.yellow)
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(place.name)
-                                            .font(.subheadline.bold())
-                                            .foregroundStyle(.primary)
-                                            .lineLimit(1)
-                                        Text(place.address)
-                                            .font(.caption)
+                        Section {
+                            ForEach(favorites.favorites) { place in
+                                Button { onGo(place) } label: {
+                                    HStack(spacing: 10) {
+                                        Image(systemName: FavoritePlace.icon(for: place.kind))
+                                            .foregroundStyle(Color(FavoritePlace.uiColor(for: place.kind)))
+                                            .frame(width: 22)
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(place.name)
+                                                .font(.subheadline.bold())
+                                                .foregroundStyle(.primary)
+                                                .lineLimit(1)
+                                            Text(place.address)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .lineLimit(1)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "location.fill")
                                             .foregroundStyle(.secondary)
-                                            .lineLimit(1)
                                     }
-                                    Spacer()
-                                    Image(systemName: "location.fill")
-                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    kindButton(.work, for: place).tint(.brown)
+                                    kindButton(.home, for: place).tint(.blue)
+                                }
+                                .contextMenu {
+                                    kindButton(.home, for: place)
+                                    kindButton(.work, for: place)
+                                    Button(role: .destructive) { favorites.remove(place) } label: {
+                                        Label("Remove", systemImage: "trash")
+                                    }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .onDelete { favorites.remove(at: $0) }
+                        } footer: {
+                            Text("Swipe right on a place to set it as Home or Work.")
                         }
-                        .onDelete { favorites.remove(at: $0) }
                     }
                 }
             }
@@ -1247,6 +1304,42 @@ struct FavoritesSheetView: View {
                     Button("Close") { dismiss() }
                 }
             }
+        }
+    }
+}
+
+extension FavoritesSheetView {
+    /// Ev/İş yap; zaten öyleyse etiketi kaldır.
+    fileprivate func kindButton(_ kind: PlaceKind, for place: FavoritePlace) -> some View {
+        let isSet = place.kind == kind
+        let title: LocalizedStringKey = switch (kind, isSet) {
+        case (.home, false): "Set as Home"
+        case (.home, true): "Remove Home"
+        case (.work, false): "Set as Work"
+        case (.work, true): "Remove Work"
+        }
+        return Button {
+            favorites.setKind(isSet ? nil : kind, for: place)
+        } label: {
+            Label(title, systemImage: FavoritePlace.icon(for: kind))
+        }
+    }
+}
+
+extension FavoritePlace {
+    static func icon(for kind: PlaceKind?) -> String {
+        switch kind {
+        case .home: return "house.fill"
+        case .work: return "briefcase.fill"
+        case nil: return "star.fill"
+        }
+    }
+
+    static func uiColor(for kind: PlaceKind?) -> UIColor {
+        switch kind {
+        case .home: return .systemBlue
+        case .work: return .systemBrown
+        case nil: return .systemYellow
         }
     }
 }

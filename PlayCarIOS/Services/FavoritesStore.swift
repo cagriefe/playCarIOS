@@ -2,6 +2,12 @@ import Foundation
 import MapKit
 import Combine
 
+/// Ev / İş kısayolu (birden fazla yer aynı etiketi alabilir: iki ev gibi).
+enum PlaceKind: String, Codable {
+    case home
+    case work
+}
+
 /// Favori yer modeli. Cihazda saklanır (UserDefaults + JSON),
 /// harita pin'i için koordinat döner.
 struct FavoritePlace: Identifiable, Codable, Equatable {
@@ -11,6 +17,8 @@ struct FavoritePlace: Identifiable, Codable, Equatable {
     var latitude: Double
     var longitude: Double
     var createdAt: Date = Date()
+    /// Optional: eski kayıtlarda alan yok, decodeIfPresent ile nil gelir.
+    var kind: PlaceKind?
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -46,6 +54,17 @@ final class FavoritesStore: ObservableObject {
 
     func remove(at offsets: IndexSet) {
         favorites.remove(atOffsets: offsets)
+        save()
+    }
+
+    var homes: [FavoritePlace] { favorites.filter { $0.kind == .home } }
+    var works: [FavoritePlace] { favorites.filter { $0.kind == .work } }
+    var shortcuts: [FavoritePlace] { homes + works }
+
+    /// Yeri Ev/İş yapar; nil etiketi kaldırır. Diğer Ev/İş'lere dokunmaz.
+    func setKind(_ kind: PlaceKind?, for place: FavoritePlace) {
+        guard let i = favorites.firstIndex(where: { $0.id == place.id }) else { return }
+        favorites[i].kind = kind
         save()
     }
 

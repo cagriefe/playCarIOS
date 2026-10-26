@@ -29,6 +29,8 @@
 		B10000000000000000000019 /* ManeuverIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000019 /* ManeuverIcon.swift */; };
 		B20000000000000000000003 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000003 /* Localizable.xcstrings */; };
 		B20000000000000000000004 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000004 /* InfoPlist.xcstrings */; };
+		B10000000000000000000020 /* RecentDestinationsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000020 /* RecentDestinationsStore.swift */; };
+		B10000000000000000000021 /* QuickDestinationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000021 /* QuickDestinationsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +58,8 @@
 		F10000000000000000000019 /* ManeuverIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManeuverIcon.swift; sourceTree = "<group>"; };
 		F50000000000000000000003 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		F50000000000000000000004 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
+		F10000000000000000000020 /* RecentDestinationsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentDestinationsStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000021 /* QuickDestinationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickDestinationsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +117,7 @@
 				F10000000000000000000014 /* CallStore.swift */,
 				F10000000000000000000015 /* ContactsStore.swift */,
 				F10000000000000000000018 /* Maneuver.swift */,
+				F10000000000000000000020 /* RecentDestinationsStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -126,6 +131,7 @@
 				F10000000000000000000010 /* MediaControlView.swift */,
 				F10000000000000000000017 /* CallPanelView.swift */,
 				F10000000000000000000019 /* ManeuverIcon.swift */,
+				F10000000000000000000021 /* QuickDestinationsView.swift */,
 				F10000000000000000000016 /* FavoriteContactsRow.swift */,
 			);
 			path = Views;
@@ -219,6 +225,8 @@
 				B10000000000000000000010 /* MediaControlView.swift in Sources */,
 				B10000000000000000000017 /* CallPanelView.swift in Sources */,
 				B10000000000000000000019 /* ManeuverIcon.swift in Sources */,
+				B10000000000000000000021 /* QuickDestinationsView.swift in Sources */,
+				B10000000000000000000020 /* RecentDestinationsStore.swift in Sources */,
 				B10000000000000000000018 /* Maneuver.swift in Sources */,
 				B10000000000000000000016 /* FavoriteContactsRow.swift in Sources */,
 				B10000000000000000000015 /* ContactsStore.swift in Sources */,

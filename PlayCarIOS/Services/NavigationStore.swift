@@ -18,6 +18,7 @@ final class NavigationStore: NSObject, ObservableObject {
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var route: MKRoute?
     @Published private(set) var destinationName = ""
+    var destinationCoordinate: CLLocationCoordinate2D? { destinationLocation?.coordinate }
     @Published private(set) var currentStepIndex = 0
     @Published private(set) var nextInstruction = ""
     @Published private(set) var nextManeuver: Maneuver = .straight

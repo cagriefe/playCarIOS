@@ -44,7 +44,7 @@ afişinden/ekranından yapılır. Uygulama arka planda değil, önde kalsın diy
   altta küçük "Ardından ↰ …" şeridi.
 - Test: açı → manevra sınıflandırma birim testleri (madde 5'teki test hedefiyle).
 
-## 3. Ev/İş kısayolları + son hedefler
+## 3. Ev/İş kısayolları + son hedefler ✅
 
 - `FavoritePlace.kind: home/work/other` (Codable geriye uyumlu, varsayılan `.other`).
 - `RecentDestinationsStore`: son 8 hedef (aynı koordinat tekilleştirilir), navigasyon

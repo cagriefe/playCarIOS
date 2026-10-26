@@ -9,7 +9,8 @@ The app is localized in **English** and **Turkish** and follows the device langu
 - **Map** — `MKMapView` with live traffic, Apple Maps-style follow / heading modes, day/night map toggle, POI tap, long-press to drop a pin, and a compass.
 - **Navigation** — driving routes via `MKDirections`, step-by-step guidance, automatic re-routing when off-route, ETA, and voice prompts in the app language that duck music instead of stopping it, maneuver arrows and a "Then" hint for close maneuvers.
 - **Search** — `MKLocalSearchCompleter` biased towards the current location, with 300 ms debounce.
-- **Favorites** — save, list, navigate to, and delete places (stored on-device).
+- **Favorites, Home & Work** — save, list, navigate to, and delete places (stored on-device). Mark favorites as Home or Work (swipe right in Favorites; more than one of each is allowed); one-tap chips under the search bar show them with live, traffic-aware travel time.
+- **Recents** — the last 8 destinations you navigated to, shown as chips and in the search list.
 - **Speedometer** — GPS speed in km/h or mph with a user-configurable speed limit and color warnings.
 - **Media** — now playing, playlists and tracks from the device music library via `MediaPlayer`, a seekable progress bar, and the system `MPVolumeView` (volume + AirPlay).
 - **Favorite contacts** — four one-tap call shortcuts between the speedometer and the media card, picked with the system contact picker (no Contacts permission needed). Long-press to call, replace or remove.

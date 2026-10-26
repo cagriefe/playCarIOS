@@ -1,0 +1,1015 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "": {
+      "shouldTranslate": false
+    },
+    "%@ kilometers": {
+      "comment": "Spoken distance, decimal kilometers",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ kilometre"
+          }
+        }
+      }
+    },
+    "%@ left • Arrive %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ left • Arrive %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalan %1$@ • Varış %2$@"
+          }
+        }
+      }
+    },
+    "%@ miles": {
+      "comment": "Spoken distance, decimal miles",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ mil"
+          }
+        }
+      }
+    },
+    "%@ • Arrive %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ • Arrive %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ • Varış %2$@"
+          }
+        }
+      }
+    },
+    "%@, then %@": {
+      "comment": "Spoken: maneuver, then the next close maneuver",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@, then %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, ardından %2$@"
+          }
+        }
+      }
+    },
+    "%lld": {
+      "shouldTranslate": false
+    },
+    "%lld feet": {
+      "comment": "Spoken distance",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld fit"
+          }
+        }
+      }
+    },
+    "%lld kilometers": {
+      "comment": "Spoken distance, whole kilometers",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld kilometer"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld kilometers"
+                }
+              }
+            }
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld kilometre"
+          }
+        }
+      }
+    },
+    "%lld meters": {
+      "comment": "Spoken distance",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld metre"
+          }
+        }
+      }
+    },
+    "%lld miles": {
+      "comment": "Spoken distance, whole miles",
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld mile"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld miles"
+                }
+              }
+            }
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld mil"
+          }
+        }
+      }
+    },
+    "%lld tracks": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld track"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld tracks"
+                }
+              }
+            }
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld parça"
+          }
+        }
+      }
+    },
+    "-%@": {
+      "shouldTranslate": false
+    },
+    "Add": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekle"
+          }
+        }
+      }
+    },
+    "Add favorite contact": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favori kişi ekle"
+          }
+        }
+      }
+    },
+    "Add places with ★ in search results or on the selected place card.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aramada satırdaki ★ ile veya seçili yer kartındaki ★ ile ekleyin."
+          }
+        }
+      }
+    },
+    "Allow": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İzin Ver"
+          }
+        }
+      }
+    },
+    "Answer from the call banner at the top of the screen. No banner? Settings › Apps › Phone › Incoming Calls › Banner.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cevaplamak için ekranın üstündeki arama afişini kullanın. Afiş görünmüyorsa: Ayarlar › Uygulamalar › Telefon › Gelen Aramalar › Afiş."
+          }
+        }
+      }
+    },
+    "Approaching the limit": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limite yaklaşıyorsunuz"
+          }
+        }
+      }
+    },
+    "Arrived: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vardınız: %@"
+          }
+        }
+      }
+    },
+    "Artist": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sanatçı"
+          }
+        }
+      }
+    },
+    "Artist (A–Z)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sanatçı (A-Z)"
+          }
+        }
+      }
+    },
+    "Back": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri"
+          }
+        }
+      }
+    },
+    "Calculating route…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rota hesaplanıyor…"
+          }
+        }
+      }
+    },
+    "Call": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arama"
+          }
+        }
+      }
+    },
+    "Call %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ara"
+          }
+        }
+      }
+    },
+    "Call (%@)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ara (%@)"
+          }
+        }
+      }
+    },
+    "Calling": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aranıyor"
+          }
+        }
+      }
+    },
+    "Calling…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aranıyor…"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vazgeç"
+          }
+        }
+      }
+    },
+    "Close": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
+          }
+        }
+      }
+    },
+    "Connected": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüşmede"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam edin"
+          }
+        }
+      }
+    },
+    "Couldn't calculate a route. Check your internet connection.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rota hesaplanamadı. İnterneti kontrol edin."
+          }
+        }
+      }
+    },
+    "Couldn't set up audio output.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses çıkışı ayarlanamadı."
+          }
+        }
+      }
+    },
+    "Date": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tarih"
+          }
+        }
+      }
+    },
+    "Date Added (Newest)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eklenme Tarihi (Yeniler)"
+          }
+        }
+      }
+    },
+    "Destination": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varış noktası"
+          }
+        }
+      }
+    },
+    "Dropped Pin": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İşaretli Konum"
+          }
+        }
+      }
+    },
+    "E": {
+      "comment": "Compass: east",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "D"
+          }
+        }
+      }
+    },
+    "End": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bitir"
+          }
+        }
+      }
+    },
+    "Favorites": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorilerim"
+          }
+        }
+      }
+    },
+    "Go": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başla"
+          }
+        }
+      }
+    },
+    "Hide call card": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arama kartını gizle"
+          }
+        }
+      }
+    },
+    "In %@, %@": {
+      "comment": "Spoken: distance, then maneuver",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "In %1$@, %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ sonra, %2$@"
+          }
+        }
+      }
+    },
+    "Incoming Call": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelen Arama"
+          }
+        }
+      }
+    },
+    "LIMIT %lld": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LİMİT %lld"
+          }
+        }
+      }
+    },
+    "Limit: %lld %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Limit: %1$lld %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit: %1$lld %2$@"
+          }
+        }
+      }
+    },
+    "Location access is needed for the map.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harita için konum izni gerekli."
+          }
+        }
+      }
+    },
+    "Location is off. Speed and map won't work.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konum kapalı. Hız ve harita çalışmaz."
+          }
+        }
+      }
+    },
+    "Location is restricted.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konum kısıtlı."
+          }
+        }
+      }
+    },
+    "MEDIA": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MEDYA"
+          }
+        }
+      }
+    },
+    "Media access is needed to show track info.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parça bilgisi için medya izni gerekir."
+          }
+        }
+      }
+    },
+    "Mute voice guidance": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesli yönlendirmeyi kapat"
+          }
+        }
+      }
+    },
+    "N": {
+      "comment": "Compass: north",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "K"
+          }
+        }
+      }
+    },
+    "NE": {
+      "comment": "Compass: northeast",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KD"
+          }
+        }
+      }
+    },
+    "NW": {
+      "comment": "Compass: northwest",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "KB"
+          }
+        }
+      }
+    },
+    "No %@ voice installed. Settings › Accessibility › Spoken Content › Voices": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ses yüklü değil. Ayarlar › Erişilebilirlik › Konuşulan İçerik › Sesler"
+          }
+        }
+      }
+    },
+    "No Favorites Yet": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Henüz favori yok"
+          }
+        }
+      }
+    },
+    "No playlists found. Create one in the Music app.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liste bulunamadı. Müzik uygulamasında liste oluşturun."
+          }
+        }
+      }
+    },
+    "Nothing Playing": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalan parça yok"
+          }
+        }
+      }
+    },
+    "On Hold": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beklemede"
+          }
+        }
+      }
+    },
+    "Over the speed limit!": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hız limitini aştınız!"
+          }
+        }
+      }
+    },
+    "Phone Call": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Telefon Görüşmesi"
+          }
+        }
+      }
+    },
+    "Playlists": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalma Listeleri"
+          }
+        }
+      }
+    },
+    "Re-center": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ortala"
+          }
+        }
+      }
+    },
+    "Remove": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaldır"
+          }
+        }
+      }
+    },
+    "Replace": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değiştir"
+          }
+        }
+      }
+    },
+    "Ringing…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çalıyor…"
+          }
+        }
+      }
+    },
+    "Route recalculated.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rota yeniden hesaplandı."
+          }
+        }
+      }
+    },
+    "S": {
+      "comment": "Compass: south",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G"
+          }
+        }
+      }
+    },
+    "SE": {
+      "comment": "Compass: southeast",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GD"
+          }
+        }
+      }
+    },
+    "SW": {
+      "comment": "Compass: southwest",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GB"
+          }
+        }
+      }
+    },
+    "Search for a place or address": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adres veya mekan ara"
+          }
+        }
+      }
+    },
+    "Selected Location": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seçili konum"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar"
+          }
+        }
+      }
+    },
+    "Sort: %@": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sırala: %@"
+          }
+        }
+      }
+    },
+    "Start playback in the Music app": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Müzik uygulamasında başlatın"
+          }
+        }
+      }
+    },
+    "Stopped": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duruyor"
+          }
+        }
+      }
+    },
+    "Then": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ardından"
+          }
+        }
+      }
+    },
+    "This playlist is empty.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu listede parça yok."
+          }
+        }
+      }
+    },
+    "Title": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsim"
+          }
+        }
+      }
+    },
+    "Title (A–Z)": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsim (A-Z)"
+          }
+        }
+      }
+    },
+    "Tracks": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parçalar"
+          }
+        }
+      }
+    },
+    "Unknown Artist": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmeyen sanatçı"
+          }
+        }
+      }
+    },
+    "Unknown Track": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bilinmeyen parça"
+          }
+        }
+      }
+    },
+    "Unmute voice guidance": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesli yönlendirmeyi aç"
+          }
+        }
+      }
+    },
+    "Untitled Playlist": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İsimsiz liste"
+          }
+        }
+      }
+    },
+    "Use the iPhone call screen to hang up or switch to speaker (iOS doesn't allow apps to).": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapatmak ve hoparlör için iPhone arama ekranını kullanın (iOS uygulamalara izin vermez)."
+          }
+        }
+      }
+    },
+    "W": {
+      "comment": "Compass: west",
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B"
+          }
+        }
+      }
+    },
+    "Waiting for location…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konum bekleniyor…"
+          }
+        }
+      }
+    },
+    "Waiting for your location…": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önce konum bekleniyor…"
+          }
+        }
+      }
+    },
+    "You have arrived.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Varış noktasına ulaştınız."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

@@ -33,7 +33,7 @@ afişinden/ekranından yapılır. Uygulama arka planda değil, önde kalsın diy
 
 ---
 
-## 1. Manevra okları + "Ardından" satırı
+## 1. Manevra okları + "Ardından" satırı ✅
 
 - `NavigationStore`: her adım için `Maneuver` (düz, hafif/normal/keskin sağ-sol, U dönüşü,
   kavşak çıkışı, varış). Kaynak: (a) Türkçe talimat metni kalıpları ("sağa", "hafif sola",
@@ -92,4 +92,4 @@ afişinden/ekranından yapılır. Uygulama arka planda değil, önde kalsın diy
   manevra sınıflandırma, `CallStore` faz eşlemesi.
 - README ↔ kod: `MPVolumeView` ya eklenir (AVRoutePickerView ile ses çıkışı) ya README'den
   çıkarılır; kullanılmayan "Always" konum izni metni kaldırılır.
-- `Localizable.xcstrings` (tr + en) — tüm sabit metinler.
+- ✅ `Localizable.xcstrings` (kaynak en + tr), cihaz diline uyum, bölgeye göre km/h–mph, saat ve tarih biçimi.

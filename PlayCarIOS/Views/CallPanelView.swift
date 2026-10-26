@@ -34,7 +34,7 @@ struct CallPanelView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("Arama kartını gizle")
+                .accessibilityLabel("Hide call card")
             }
 
             Spacer(minLength: 0)
@@ -83,18 +83,18 @@ struct CallPanelView: View {
     private var title: String {
         if let contact = calls.contact { return contact.name }
         switch calls.phase {
-        case .incoming: return "Gelen Arama"
-        case .dialing: return "Aranıyor"
-        default: return "Telefon Görüşmesi"
+        case .incoming: return String(localized: "Incoming Call")
+        case .dialing: return String(localized: "Calling")
+        default: return String(localized: "Phone Call")
         }
     }
 
     private var statusText: String {
         switch calls.phase {
-        case .incoming: return "Çalıyor…"
-        case .dialing: return "Aranıyor…"
-        case .active: return "Görüşmede"
-        case .onHold: return "Beklemede"
+        case .incoming: return String(localized: "Ringing…")
+        case .dialing: return String(localized: "Calling…")
+        case .active: return String(localized: "Connected")
+        case .onHold: return String(localized: "On Hold")
         case .idle: return ""
         }
     }
@@ -110,9 +110,9 @@ struct CallPanelView: View {
     private var hint: String {
         switch calls.phase {
         case .incoming:
-            return "Cevaplamak için ekranın üstündeki arama afişini kullanın. Afiş görünmüyorsa: Ayarlar › Telefon › Gelen Aramalar › Afiş."
+            return String(localized: "Answer from the call banner at the top of the screen. No banner? Settings › Apps › Phone › Incoming Calls › Banner.")
         default:
-            return "Kapatmak ve hoparlör için iPhone arama ekranını kullanın (iOS uygulamalara izin vermez)."
+            return String(localized: "Use the iPhone call screen to hang up or switch to speaker (iOS doesn't allow apps to).")
         }
     }
 }

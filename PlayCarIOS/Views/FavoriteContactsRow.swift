@@ -38,16 +38,16 @@ struct FavoriteContactsRow: View {
             .buttonStyle(.plain)
             .contextMenu {
                 Button { calls.call(contact) } label: {
-                    Label("Ara (\(contact.label ?? contact.phone))", systemImage: "phone.fill")
+                    Label("Call (\(contact.label ?? contact.phone))", systemImage: "phone.fill")
                 }
                 Button { contacts.pick(into: index) } label: {
-                    Label("Değiştir", systemImage: "arrow.triangle.2.circlepath")
+                    Label("Replace", systemImage: "arrow.triangle.2.circlepath")
                 }
                 Button(role: .destructive) { contacts.set(nil, at: index) } label: {
-                    Label("Kaldır", systemImage: "trash")
+                    Label("Remove", systemImage: "trash")
                 }
             }
-            .accessibilityLabel("\(contact.name) ara")
+            .accessibilityLabel(Text("Call \(contact.name)"))
         } else {
             Button {
                 contacts.pick(into: index)
@@ -61,7 +61,7 @@ struct FavoriteContactsRow: View {
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundStyle(.secondary)
                         )
-                    Text("Ekle")
+                    Text("Add")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -70,7 +70,7 @@ struct FavoriteContactsRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Favori kişi ekle")
+            .accessibilityLabel("Add favorite contact")
         }
     }
 }

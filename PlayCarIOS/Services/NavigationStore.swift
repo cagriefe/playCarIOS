@@ -4,7 +4,7 @@ import AVFoundation
 import Combine
 
 /// Sürüş navigasyonu: rota hesaplama (MKDirections), adım takibi,
-/// sapma durumunda yeniden hesaplama, Türkçe sesli yönlendirme.
+/// sapma durumunda yeniden hesaplama, uygulama dilinde sesli yönlendirme.
 final class NavigationStore: NSObject, ObservableObject {
 
     enum Phase: Equatable {
@@ -32,8 +32,8 @@ final class NavigationStore: NSObject, ObservableObject {
         didSet { if muted { speaker.stopSpeaking(at: .immediate) } }
     }
     @Published var lastError: String?
-    /// Türkçe ses yoksa iOS sessizce varsayılan dile düşer — bunu yakala.
-    @Published private(set) var turkishVoiceMissing = false
+    /// Uygulama dilinde ses yoksa iOS sessizce başka dile düşer — bunu yakala.
+    @Published private(set) var voiceMissing = false
 
     private var destination: MKMapItem?
     private var destinationLocation: CLLocation?
@@ -46,7 +46,7 @@ final class NavigationStore: NSObject, ObservableObject {
     private var silentUpdate = false
     private let speaker = AVSpeechSynthesizer()
     private var voiceWarningSnoozed = false
-    private var cachedTurkishVoice: AVSpeechSynthesisVoice?
+    private var cachedVoice: AVSpeechSynthesisVoice?
 
     /// Adım içi anons durumu: aynı hatırlatma iki kez okunmasın.
     private var announcedApproach = false
@@ -57,9 +57,9 @@ final class NavigationStore: NSObject, ObservableObject {
         speaker.delegate = self
     }
 
-    /// "Türkçe ses yok" uyarısını kapat (oturumluk).
-    func dismissTurkishVoiceWarning() {
-        turkishVoiceMissing = false
+    /// "Ses yok" uyarısını kapat (oturumluk).
+    func dismissVoiceWarning() {
+        voiceMissing = false
         voiceWarningSnoozed = true
     }
 
@@ -73,14 +73,14 @@ final class NavigationStore: NSObject, ObservableObject {
         destination = item
         let c = item.placemark.coordinate
         destinationLocation = CLLocation(latitude: c.latitude, longitude: c.longitude)
-        destinationName = item.name ?? "Varış noktası"
+        destinationName = item.name ?? String(localized: "Destination")
         lastKnownLocation = userLocation
         phase = .calculating
         calculate(from: userLocation) { [weak self] route in
             guard let self else { return }
             guard let route else {
                 self.phase = .idle
-                self.lastError = "Rota hesaplanamadı. İnterneti kontrol edin."
+                self.lastError = String(localized: "Couldn't calculate a route. Check your internet connection.")
                 return
             }
             self.setRoute(route)
@@ -206,7 +206,7 @@ final class NavigationStore: NSObject, ObservableObject {
             phase = .arrived
             nextDistance = 0
             distanceRemaining = 0
-            speak("Varış noktasına ulaştınız.")
+            speak(String(localized: "You have arrived."))
             return
         }
 
@@ -251,7 +251,7 @@ final class NavigationStore: NSObject, ObservableObject {
             guard let self, self.phase == .navigating, let route else { return }
             self.setRoute(route)
             self.currentStepIndex = Self.firstDrivableStep(in: route)
-            self.speak("Rota yeniden hesaplandı.")
+            self.speak(String(localized: "Route recalculated."))
             self.silentUpdate = true
             self.updateLocation(self.lastKnownLocation ?? userLocation)
             self.silentUpdate = false
@@ -299,9 +299,9 @@ final class NavigationStore: NSObject, ObservableObject {
     private func upcomingInstruction() -> String {
         guard let steps = route?.steps else { return "" }
         let i = currentStepIndex + 1
-        guard steps.indices.contains(i) else { return "Varış noktası" }
+        guard steps.indices.contains(i) else { return String(localized: "Destination") }
         let text = steps[i].instructions
-        if text.isEmpty { return "Devam edin" }
+        if text.isEmpty { return String(localized: "Continue") }
         return text
     }
 
@@ -318,7 +318,7 @@ final class NavigationStore: NSObject, ObservableObject {
             let raw = steps[i + 1].instructions
             let isLast = i + 1 == steps.count - 1
             if !raw.isEmpty || isLast {
-                thenText = raw.isEmpty ? "Varış noktası" : raw
+                thenText = raw.isEmpty ? String(localized: "Destination") : raw
                 thenMan = stepManeuvers.indices.contains(i + 1) ? stepManeuvers[i + 1] : nil
             }
         }
@@ -329,9 +329,8 @@ final class NavigationStore: NSObject, ObservableObject {
     /// Son anonsa yakın manevrayı ekle: "Sağa dönün, ardından sola dönün".
     private func withThen(_ text: String) -> String {
         guard let then = thenInstruction, !text.isEmpty else { return text }
-        let tr = Locale(identifier: "tr_TR")
-        let lowered = then.prefix(1).lowercased(with: tr) + then.dropFirst()
-        return "\(text), ardından \(lowered)"
+        let lowered = then.prefix(1).lowercased(with: .current) + then.dropFirst()
+        return String(localized: "\(text), then \(lowered)", comment: "Spoken: maneuver, then the next close maneuver")
     }
 
     /// Adım `index`'in başındaki dönüş açısı: önceki sürülebilir adımın son
@@ -362,7 +361,7 @@ final class NavigationStore: NSObject, ObservableObject {
         announcedApproach = distanceToManeuver < 700
         announcedFinal = distanceToManeuver < 150
         if distanceToManeuver >= 150 {
-            speak("\(NavFormat.spokenDistance(distanceToManeuver)) sonra, \(text)", queue: queue)
+            speak(NavFormat.spokenIn(distanceToManeuver, text), queue: queue)
         } else {
             speak(withThen(text), queue: queue)
         }
@@ -379,7 +378,7 @@ final class NavigationStore: NSObject, ObservableObject {
             speak(withThen(text))
         } else if !announcedApproach, nextDistance <= 400 {
             announcedApproach = true
-            speak("\(NavFormat.spokenDistance(nextDistance)) sonra, \(text)")
+            speak(NavFormat.spokenIn(nextDistance, text))
         }
     }
 
@@ -390,25 +389,39 @@ final class NavigationStore: NSObject, ObservableObject {
         #endif
         if !queue { speaker.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: text)
-        let voice = bestTurkishVoice()
+        let voice = bestVoice()
         utterance.voice = voice
         if voice == nil && !voiceWarningSnoozed {
-            turkishVoiceMissing = true
+            voiceMissing = true
         }
         utterance.rate = 0.52
         activateAudioSession()
         speaker.speak(utterance)
     }
 
-    /// Yüklü Türkçe sesler arasından en kalitelisi: premium > enhanced > default.
+    /// Talimatlar uygulama dilinde gelir (MapKit); ses de o dilde olmalı.
+    static var speechLanguage: String {
+        Bundle.main.preferredLocalizations.first.map { String($0.prefix(2)) } ?? "en"
+    }
+
+    /// Uyarı metni için dil adı: "Türkçe", "English".
+    var voiceLanguageName: String {
+        Locale.current.localizedString(forLanguageCode: Self.speechLanguage)?
+            .capitalized(with: .current) ?? Self.speechLanguage
+    }
+
+    /// Uygulama dilindeki yüklü sesler arasından en uygunu: önce bölgeye uyan
+    /// (en-GB, en-US…), sonra kalite (premium > enhanced > default).
     /// Bulunamazsa her seferinde yeniden bakılır (kullanıcı Ayarlar'dan indirmiş olabilir).
-    private func bestTurkishVoice() -> AVSpeechSynthesisVoice? {
-        if let cachedTurkishVoice { return cachedTurkishVoice }
-        let tr = AVSpeechSynthesisVoice.speechVoices().filter {
-            $0.language.lowercased().hasPrefix("tr")
+    private func bestVoice() -> AVSpeechSynthesisVoice? {
+        if let cachedVoice { return cachedVoice }
+        let lang = Self.speechLanguage
+        let preferred = Locale.current.region.map { "\(lang)-\($0.identifier)" } ?? ""
+        let candidates = AVSpeechSynthesisVoice.speechVoices().filter {
+            $0.language.lowercased().hasPrefix(lang)
         }
         func rank(_ v: AVSpeechSynthesisVoice) -> Int {
-            let langScore = (v.language == "tr-TR") ? 0 : 1
+            let langScore = (v.language == preferred) ? 0 : 1
             let qualityScore: Int
             switch v.quality {
             case .premium: qualityScore = 0
@@ -417,9 +430,9 @@ final class NavigationStore: NSObject, ObservableObject {
             }
             return langScore * 10 + qualityScore
         }
-        let best = tr.min { rank($0) < rank($1) } ?? AVSpeechSynthesisVoice(language: "tr-TR")
-        cachedTurkishVoice = best
-        if best != nil { turkishVoiceMissing = false }
+        let best = candidates.min { rank($0) < rank($1) } ?? AVSpeechSynthesisVoice(language: lang)
+        cachedVoice = best
+        if best != nil { voiceMissing = false }
         return best
     }
 
@@ -436,7 +449,7 @@ final class NavigationStore: NSObject, ObservableObject {
             )
             try session.setActive(true)
         } catch {
-            lastError = "Ses çıkışı ayarlanamadı."
+            lastError = String(localized: "Couldn't set up audio output.")
         }
     }
 
@@ -550,32 +563,66 @@ extension NavigationStore: AVSpeechSynthesizerDelegate {
 // MARK: - Format
 
 enum NavFormat {
-    /// 350 m / 2,3 km (Türkçe ondalık)
+    /// ABD ve İngiltere'de yol mesafeleri mil, hızlar mph.
+    static var usesImperial: Bool {
+        let system = Locale.current.measurementSystem
+        return system == .us || system == .uk
+    }
+
+    private static func decimal(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(1)))
+    }
+
+    /// Ekran: "350 m" / "2,3 km" — "500 ft" / "0.3 mi" (yerel ondalık ayırıcı).
     static func distance(_ meters: Double) -> String {
+        if usesImperial {
+            let miles = meters / 1609.344
+            if miles < 0.1 {
+                let feet = max(50, Int((meters * 3.28084 / 50).rounded()) * 50)
+                return "\(feet) ft"
+            }
+            return miles < 10 ? "\(decimal(miles)) mi" : "\(Int(miles.rounded())) mi"
+        }
         if meters < 950 {
             return "\(Int(meters.rounded())) m"
         }
-        let km = meters / 1000
-        return "\(String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")) km"
+        return "\(decimal(meters / 1000)) km"
     }
 
-    /// Sesli okunuş: "300 metre", "1,5 kilometre" (50 m'ye yuvarlanır).
+    /// Sesli okunuş: "300 metre" / "300 meters", "1,5 kilometre", "500 feet", "2 miles".
     static func spokenDistance(_ meters: Double) -> String {
+        if usesImperial {
+            let miles = meters / 1609.344
+            if miles < 0.1 {
+                let feet = max(50, Int((meters * 3.28084 / 50).rounded()) * 50)
+                return String(localized: "\(feet) feet", comment: "Spoken distance")
+            }
+            let rounded = (miles * 10).rounded() / 10
+            if rounded == rounded.rounded() {
+                return String(localized: "\(Int(rounded)) miles", comment: "Spoken distance, whole miles")
+            }
+            return String(localized: "\(decimal(rounded)) miles", comment: "Spoken distance, decimal miles")
+        }
         if meters < 950 {
             let rounded = max(50, Int((meters / 50).rounded()) * 50)
-            return "\(rounded) metre"
+            return String(localized: "\(rounded) meters", comment: "Spoken distance")
         }
         let km = (meters / 100).rounded() / 10
         if km == km.rounded() {
-            return "\(Int(km)) kilometre"
+            return String(localized: "\(Int(km)) kilometers", comment: "Spoken distance, whole kilometers")
         }
-        return "\(String(format: "%.1f", km).replacingOccurrences(of: ".", with: ",")) kilometre"
+        return String(localized: "\(decimal(km)) kilometers", comment: "Spoken distance, decimal kilometers")
     }
 
+    /// "In 300 meters, turn right" / "300 metre sonra, sağa dönün".
+    static func spokenIn(_ meters: Double, _ instruction: String) -> String {
+        String(localized: "In \(spokenDistance(meters)), \(instruction)", comment: "Spoken: distance, then maneuver")
+    }
+
+    /// Bölgeye göre 24 saat ya da 12 saat (AM/PM).
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "HH:mm"
+        f.setLocalizedDateFormatFromTemplate("jmm")
         return f
     }()
 

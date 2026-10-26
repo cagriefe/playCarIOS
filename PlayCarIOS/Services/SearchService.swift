@@ -2,7 +2,7 @@ import Foundation
 import MapKit
 import Combine
 
-/// Türkiye odaklı POI / adres arama.
+/// POI / adres arama: kullanıcının konumuna göre önceliklendirilir.
 /// MKLocalSearchCompleter + MKLocalSearch ile detay çözümü.
 final class SearchService: NSObject, ObservableObject, MKLocalSearchCompleterDelegate {
 
@@ -14,17 +14,13 @@ final class SearchService: NSObject, ObservableObject, MKLocalSearchCompleterDel
     private let completer = MKLocalSearchCompleter()
     private var cancellables = Set<AnyCancellable>()
 
-    /// Türkiye sınırlarına kabaca bias: merkez 39.0, 35.0
-    var searchRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 39.0, longitude: 35.0),
-        span: MKCoordinateSpan(latitudeDelta: 8.0, longitudeDelta: 8.0)
-    )
+    /// Konum gelene kadar bölge yok (dünya geneli arama).
+    var searchRegion: MKCoordinateRegion?
 
     override init() {
         super.init()
         completer.delegate = self
         completer.resultTypes = [.pointOfInterest, .address]
-        completer.region = searchRegion
 
         $query
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
@@ -57,13 +53,13 @@ final class SearchService: NSObject, ObservableObject, MKLocalSearchCompleterDel
             center: coordinate,
             span: MKCoordinateSpan(latitudeDelta: 1.5, longitudeDelta: 1.5)
         )
-        completer.region = searchRegion
+        completer.region = searchRegion ?? completer.region
     }
 
     /// Completion -> MKMapItem çözümle.
     func resolve(_ completion: MKLocalSearchCompletion, completion handler: @escaping (MKMapItem?) -> Void) {
         let request = MKLocalSearch.Request(completion: completion)
-        request.region = searchRegion
+        if let searchRegion { request.region = searchRegion }
         MKLocalSearch(request: request).start { response, error in
             if let error {
                 DispatchQueue.main.async { self.lastError = error.localizedDescription }

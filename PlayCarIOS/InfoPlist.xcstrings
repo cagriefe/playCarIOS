@@ -1,0 +1,56 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSAppleMusicUsageDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Müzik kontrolü ve çalan parça bilgilerini göstermek için medya arşivi erişimi gereklidir."
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arka planda konum erişimi hız ve rota yönlendirmesinin çalışmaya devam etmesini sağlar. (İsteğe bağlı.)"
+          }
+        }
+      }
+    },
+    "NSLocationWhenInUseUsageDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Navigasyon, harita takibi ve hız göstergesi için konum erişimi gereklidir."
+          }
+        }
+      }
+    },
+    "NSMotionUsageDescription": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hareket verisi sürüş algılamayı ve hız doğruluğunu iyileştirir. (İsteğe bağlı.)"
+          }
+        }
+      }
+    },
+    "CFBundleDisplayName": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PlayCar"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

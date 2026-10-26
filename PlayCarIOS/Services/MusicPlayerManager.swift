@@ -18,7 +18,7 @@ final class MusicPlayerManager: ObservableObject {
         case authorized
     }
 
-    /// Parça sıralaması (Türkçe etiketli).
+    /// Parça sıralaması.
     enum TrackSort: String, CaseIterable {
         case dateAddedDesc
         case titleAZ
@@ -26,24 +26,24 @@ final class MusicPlayerManager: ObservableObject {
 
         var title: String {
             switch self {
-            case .dateAddedDesc: return "Eklenme Tarihi (Yeniler)"
-            case .titleAZ: return "İsim (A-Z)"
-            case .artistAZ: return "Sanatçı (A-Z)"
+            case .dateAddedDesc: return String(localized: "Date Added (Newest)")
+            case .titleAZ: return String(localized: "Title (A–Z)")
+            case .artistAZ: return String(localized: "Artist (A–Z)")
             }
         }
 
         var shortTitle: String {
             switch self {
-            case .dateAddedDesc: return "Tarih"
-            case .titleAZ: return "İsim"
-            case .artistAZ: return "Sanatçı"
+            case .dateAddedDesc: return String(localized: "Date")
+            case .titleAZ: return String(localized: "Title")
+            case .artistAZ: return String(localized: "Artist")
             }
         }
     }
 
     @Published var authState: AuthState = .notDetermined
     @Published var isPlaying: Bool = false
-    @Published var title: String = "Çalan parça yok"
+    @Published var title: String = String(localized: "Nothing Playing")
     @Published var artist: String = "—"
     @Published var artwork: UIImage?
     @Published var playlists: [MPMediaPlaylist] = []
@@ -310,14 +310,14 @@ final class MusicPlayerManager: ObservableObject {
         let sameTrack = (pid == nowPlayingID && pid != 0)
         nowPlayingID = pid
         guard let item = player.nowPlayingItem else {
-            title = "Çalan parça yok"
-            artist = "Müzik uygulamasında başlatın"
+            title = String(localized: "Nothing Playing")
+            artist = String(localized: "Start playback in the Music app")
             artwork = nil
             artworkCacheID = 0
             return
         }
-        title = item.title ?? "Bilinmeyen parça"
-        artist = item.artist ?? "Bilinmeyen sanatçı"
+        title = item.title ?? String(localized: "Unknown Track")
+        artist = item.artist ?? String(localized: "Unknown Artist")
         if sameTrack && pid == artworkCacheID {
             return
         }

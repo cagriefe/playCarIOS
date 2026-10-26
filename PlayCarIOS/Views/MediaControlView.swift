@@ -59,7 +59,7 @@ struct MediaControlView: View {
             Button { calls.show() } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "phone.fill")
-                    Text(calls.phase == .active || calls.phase == .onHold ? calls.elapsedText : "Arama")
+                    Text(calls.phase == .active || calls.phase == .onHold ? calls.elapsedText : String(localized: "Call"))
                         .monospacedDigit()
                 }
                 .font(.caption2.bold())
@@ -78,7 +78,7 @@ struct MediaControlView: View {
                     .font(.subheadline.bold())
                     .frame(width: 36, height: 36)
             }
-            .accessibilityLabel("Çalma listeleri")
+            .accessibilityLabel("Playlists")
         }
     }
 
@@ -86,17 +86,17 @@ struct MediaControlView: View {
         VStack(spacing: 6) {
             if player.authState != .authorized {
                 HStack {
-                    Text("MEDYA")
+                    Text("MEDIA")
                         .font(.caption2.bold())
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                     cornerButton
                 }
-                Text("Parça bilgisi için medya izni gerekir.")
+                Text("Media access is needed to show track info.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-                Button("İzin Ver") { player.requestAuthorization() }
+                Button("Allow") { player.requestAuthorization() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                 Spacer(minLength: 0)
@@ -190,10 +190,10 @@ struct MediaControlView: View {
 
     private var playlistsView: some View {
         Group {
-            panelHeader(title: "Çalma Listeleri") { panelState = .nowPlaying }
+            panelHeader(title: String(localized: "Playlists")) { panelState = .nowPlaying }
 
             if player.playlists.isEmpty {
-                Text("Liste bulunamadı. Müzik uygulamasında liste oluşturun.")
+                Text("No playlists found. Create one in the Music app.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -210,11 +210,11 @@ struct MediaControlView: View {
                                 HStack(spacing: 10) {
                                     playlistArtwork(for: list)
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(list.name ?? "İsimsiz liste")
+                                        Text(list.name ?? String(localized: "Untitled Playlist"))
                                             .font(.subheadline.bold())
                                             .foregroundStyle(.primary)
                                             .lineLimit(1)
-                                        Text("\(list.count) parça")
+                                        Text("\(list.count) tracks")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -242,14 +242,14 @@ struct MediaControlView: View {
 
     private var tracksView: some View {
         Group {
-            panelHeader(title: selectedPlaylist?.name ?? "Parçalar") {
+            panelHeader(title: selectedPlaylist?.name ?? String(localized: "Tracks")) {
                 panelState = .playlists
             }
 
             sortMenu
 
             if player.currentTracks.isEmpty {
-                Text("Bu listede parça yok.")
+                Text("This playlist is empty.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.top, 8)
@@ -277,11 +277,11 @@ struct MediaControlView: View {
                                             .frame(width: 22)
                                     }
                                     VStack(alignment: .leading, spacing: 1) {
-                                        Text(item.title ?? "Bilinmeyen parça")
+                                        Text(item.title ?? String(localized: "Unknown Track"))
                                             .font(.subheadline)
                                             .foregroundStyle(.primary)
                                             .lineLimit(1)
-                                        Text(item.artist ?? "Bilinmeyen sanatçı")
+                                        Text(item.artist ?? String(localized: "Unknown Artist"))
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                             .lineLimit(1)
@@ -315,7 +315,7 @@ struct MediaControlView: View {
                 HStack(spacing: 2) {
                     Image(systemName: "chevron.left")
                         .font(.subheadline.bold())
-                    Text("Geri")
+                    Text("Back")
                         .font(.subheadline.bold())
                 }
                 .frame(minWidth: 64, minHeight: 36)
@@ -342,7 +342,7 @@ struct MediaControlView: View {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.up.arrow.down")
                     .font(.caption2.bold())
-                Text("Sırala: \(player.trackSort.shortTitle)")
+                Text("Sort: \(player.trackSort.shortTitle)")
                     .font(.caption2.bold())
                     .lineLimit(1)
             }

@@ -119,7 +119,7 @@ struct DashboardView: View {
                 Image(systemName: "location.north.fill")
                     .rotationEffect(.degrees(locationManager.headingDegrees))
                     .font(.caption2)
-                Text(locationManager.cardinalDirectionTR)
+                Text(locationManager.cardinalDirection)
                     .font(.caption2.bold())
                     .lineLimit(1)
             }

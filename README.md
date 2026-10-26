@@ -2,15 +2,15 @@
 
 PlayCar turns an iPhone into a CarPlay-like driving dashboard. It is a landscape-only, dark-themed SwiftUI app (iOS 17+): a full-height map with turn-by-turn navigation on the left (65%), and speed, status and media controls on the right (35%).
 
-The app UI and voice guidance are in Turkish.
+The app is localized in **English** and **Turkish** and follows the device language (other languages fall back to English). Route instructions and voice guidance use the app language; distances and speeds use km/h or mph depending on the region.
 
 ## Features
 
 - **Map** — `MKMapView` with live traffic, Apple Maps-style follow / heading modes, day/night map toggle, POI tap, long-press to drop a pin, and a compass.
-- **Navigation** — driving routes via `MKDirections`, step-by-step guidance, automatic re-routing when off-route, ETA, and Turkish voice prompts that duck music instead of stopping it.
-- **Search** — `MKLocalSearchCompleter` biased towards Turkey and the current location, with 300 ms debounce.
+- **Navigation** — driving routes via `MKDirections`, step-by-step guidance, automatic re-routing when off-route, ETA, and voice prompts in the app language that duck music instead of stopping it, maneuver arrows and a "Then" hint for close maneuvers.
+- **Search** — `MKLocalSearchCompleter` biased towards the current location, with 300 ms debounce.
 - **Favorites** — save, list, navigate to, and delete places (stored on-device).
-- **Speedometer** — GPS speed in km/h with a user-configurable speed limit (30–140 km/h) and color warnings.
+- **Speedometer** — GPS speed in km/h or mph with a user-configurable speed limit and color warnings.
 - **Media** — now playing, playlists and tracks from the device music library via `MediaPlayer`, a seekable progress bar, and the system `MPVolumeView` (volume + AirPlay).
 - **Favorite contacts** — four one-tap call shortcuts between the speedometer and the media card, picked with the system contact picker (no Contacts permission needed). Long-press to call, replace or remove.
 - **Call card** — when a call rings, is dialing or is active, the media card switches to a call view with status and duration (via `CallKit`'s `CXCallObserver`). Calls placed from a favorite show the contact's name and photo.
@@ -62,6 +62,12 @@ PlayCarIOS/
 ```
 
 The app follows a simple MVVM structure: each service is an `ObservableObject` with a single responsibility, and views only bind to them.
+
+## Localization
+
+Strings live in `PlayCarIOS/Localizable.xcstrings` (source: English) and `PlayCarIOS/InfoPlist.xcstrings` (permission texts). To add a language, open the catalogs in Xcode and add it there.
+
+To use the app in a different language than the phone (e.g. Turkish navigation on an English iPhone): **Settings › Apps › PlayCar › Language**. For voice guidance, install a voice for that language in **Settings › Accessibility › Spoken Content › Voices**.
 
 ## Permissions
 

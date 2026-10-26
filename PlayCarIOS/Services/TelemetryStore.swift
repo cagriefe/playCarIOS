@@ -17,16 +17,15 @@ final class TelemetryStore: ObservableObject {
     private var timer: Timer?
 
     // DateFormatter pahalı: her saniye yaratma, statik önbellekle.
+    // Bölgeye göre: 24 saat / 12 saat (AM/PM), "26 Eki Pzt" / "Mon, Oct 26".
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "HH:mm"
+        f.setLocalizedDateFormatFromTemplate("jmm")
         return f
     }()
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "tr_TR")
-        f.dateFormat = "d MMM EEE"
+        f.setLocalizedDateFormatFromTemplate("EEEdMMM")
         return f
     }()
 
@@ -97,6 +96,6 @@ final class TelemetryStore: ObservableObject {
 
     var batteryText: String {
         guard batteryLevel >= 0 else { return "—" }
-        return "%\(Int(batteryLevel * 100))"
+        return Double(batteryLevel).formatted(.percent.precision(.fractionLength(0)))
     }
 }

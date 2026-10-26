@@ -160,7 +160,7 @@ struct MapPanelView: View {
                 if let item = selectedPlace, nav.phase == .idle {
                     HStack(spacing: 8) {
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(item.name ?? "Seçili konum")
+                            Text(item.name ?? String(localized: "Selected Location"))
                                 .font(.subheadline.bold())
                                 .lineLimit(1)
                             Text(selectedSubtitle)
@@ -179,7 +179,7 @@ struct MapPanelView: View {
                         }
                         Button {
                             favorites.add(
-                                name: item.name ?? "Seçili konum",
+                                name: item.name ?? String(localized: "Selected Location"),
                                 address: selectedSubtitle,
                                 coordinate: item.placemark.coordinate
                             )
@@ -207,7 +207,7 @@ struct MapPanelView: View {
                         followMode = .heading
                         pokeControls()
                     } label: {
-                        Label("Ortala", systemImage: "location.north.line.fill")
+                        Label("Re-center", systemImage: "location.north.line.fill")
                             .font(.subheadline.bold())
                             .padding(.horizontal, 16)
                             .padding(.vertical, 12)
@@ -247,7 +247,7 @@ struct MapPanelView: View {
             if let target = DebugNav.target, !DebugNav.started {
                 DebugNav.started = true
                 let item = MKMapItem(placemark: MKPlacemark(coordinate: target))
-                item.name = "Test Hedef"
+                item.name = "Test Destination"
                 startPreview(for: item)
             }
             #endif
@@ -352,7 +352,7 @@ struct MapPanelView: View {
 
     private func startPreview(for item: MKMapItem) {
         guard let loc = locationManager.lastLocation else {
-            nav.lastError = "Önce konum bekleniyor…"
+            nav.lastError = String(localized: "Waiting for your location…")
             return
         }
         nav.previewRoute(to: item, from: loc)
@@ -408,13 +408,13 @@ struct MapPanelView: View {
     private func dropPin(at coordinate: CLLocationCoordinate2D) {
         guard nav.phase == .idle else { return }
         let item = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
-        item.name = "İşaretli Konum"
+        item.name = String(localized: "Dropped Pin")
         selectedPlace = item
         selectedSubtitle = String(format: "%.5f, %.5f", coordinate.latitude, coordinate.longitude)
         geocoder.cancelGeocode()
         geocoder.reverseGeocodeLocation(
             CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude),
-            preferredLocale: Locale(identifier: "tr_TR")
+            preferredLocale: .current
         ) { placemarks, _ in
             guard let pm = placemarks?.first, selectedPlace === item else { return }
             let address = MapPlaceFormat.address(of: pm)
@@ -458,9 +458,9 @@ struct MapPanelView: View {
         case .calculating:
             HStack {
                 ProgressView().scaleEffect(0.8)
-                Text("Rota hesaplanıyor…").font(.caption).foregroundStyle(.primary)
+                Text("Calculating route…").font(.caption).foregroundStyle(.primary)
                 Spacer()
-                Button("Vazgeç") { nav.stop() }.font(.caption.bold())
+                Button("Cancel") { nav.stop() }.font(.caption.bold())
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -469,13 +469,13 @@ struct MapPanelView: View {
                 Image(systemName: "car.fill").foregroundStyle(.blue)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(nav.destinationName).font(.subheadline.bold()).lineLimit(1)
-                    Text("\(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
+                    Text("\(NavFormat.distance(nav.distanceRemaining)) • Arrive \(nav.eta.map(NavFormat.time) ?? "—")")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                Button("Başla") {
+                Button("Go") {
                     nav.start()
                 }
                 .font(.subheadline.bold())
@@ -484,7 +484,7 @@ struct MapPanelView: View {
                 .background(Color.green)
                 .foregroundStyle(.white)
                 .clipShape(Capsule())
-                Button("Kapat") { nav.stop(); overviewRoute = nil }
+                Button("Close") { nav.stop(); overviewRoute = nil }
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -506,11 +506,11 @@ struct MapPanelView: View {
                     .frame(width: 76)
                     .accessibilityElement(children: .combine)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(nav.nextInstruction.isEmpty ? "Devam edin" : nav.nextInstruction)
+                        Text(nav.nextInstruction.isEmpty ? String(localized: "Continue") : nav.nextInstruction)
                             .font(.headline)
                             .lineLimit(2)
                             .minimumScaleFactor(0.8)
-                        Text("Kalan \(NavFormat.distance(nav.distanceRemaining)) • Varış \(nav.eta.map(NavFormat.time) ?? "—")")
+                        Text("\(NavFormat.distance(nav.distanceRemaining)) left • Arrive \(nav.eta.map(NavFormat.time) ?? "—")")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
@@ -525,8 +525,8 @@ struct MapPanelView: View {
                                 .font(.subheadline)
                                 .frame(width: 44, height: 30)
                         }
-                        .accessibilityLabel(nav.muted ? "Sesli yönlendirmeyi aç" : "Sesli yönlendirmeyi kapat")
-                        Button("Bitir") { nav.stop(); overviewRoute = nil }
+                        .accessibilityLabel(nav.muted ? String(localized: "Unmute voice guidance") : String(localized: "Mute voice guidance"))
+                        Button("End") { nav.stop(); overviewRoute = nil }
                             .font(.caption.bold())
                             .frame(width: 52, height: 30)
                             .background(Color.red)
@@ -537,7 +537,7 @@ struct MapPanelView: View {
 
                 if let then = nav.thenInstruction {
                     HStack(spacing: 6) {
-                        Text("Ardından")
+                        Text("Then")
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
                         if let thenManeuver = nav.thenManeuver {
@@ -554,13 +554,13 @@ struct MapPanelView: View {
                     .transition(.opacity)
                 }
 
-                // Cihazda Türkçe ses yüklü değilse konuşma yabancı aksanla olur.
-                if nav.turkishVoiceMissing {
-                    Button { nav.dismissTurkishVoiceWarning() } label: {
+                // Uygulama dilinde ses yüklü değilse konuşma yabancı aksanla olur.
+                if nav.voiceMissing {
+                    Button { nav.dismissVoiceWarning() } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.orange)
-                            Text("Türkçe ses yüklü değil. Ayarlar > Erişilebilirlik > Konuşulan İçerik > Sesler > Türkçe")
+                            Text("No \(nav.voiceLanguageName) voice installed. Settings › Accessibility › Spoken Content › Voices")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
@@ -578,11 +578,11 @@ struct MapPanelView: View {
         case .arrived:
             HStack {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Vardınız: \(nav.destinationName)")
+                Text("Arrived: \(nav.destinationName)")
                     .font(.subheadline.bold())
                     .lineLimit(1)
                 Spacer()
-                Button("Kapat") { nav.stop(); overviewRoute = nil }
+                Button("Close") { nav.stop(); overviewRoute = nil }
                     .font(.caption.bold())
             }
             .padding(10)
@@ -1116,7 +1116,7 @@ struct SearchBarView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
-                    TextField("Adres veya mekan ara (örn. Kadıköy)", text: $searchService.query)
+                    TextField("Search for a place or address", text: $searchService.query)
                         .focused(focused)
                         .textInputAutocapitalization(.never)
                         .disableAutocorrection(true)
@@ -1136,7 +1136,7 @@ struct SearchBarView: View {
                 // Klavye açıkken haritada boşluğa dokunmak klavyeyi kapatmaz
                 // (MKMapView dokunmaları yutar). Standart çıkış: Vazgeç.
                 if focused.wrappedValue {
-                    Button("Vazgeç") {
+                    Button("Cancel") {
                         searchService.query = ""
                         focused.wrappedValue = false
                     }
@@ -1203,9 +1203,9 @@ struct FavoritesSheetView: View {
                         Image(systemName: "star.fill")
                             .font(.largeTitle)
                             .foregroundStyle(.yellow)
-                        Text("Henüz favori yok")
+                        Text("No Favorites Yet")
                             .font(.headline)
-                        Text("Aramada satırdaki ★ ile veya seçili yer kartındaki ★ ile ekleyin.")
+                        Text("Add places with ★ in search results or on the selected place card.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -1240,11 +1240,11 @@ struct FavoritesSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Favorilerim")
+            .navigationTitle("Favorites")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Kapat") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
         }
@@ -1262,9 +1262,9 @@ struct LocationPermissionBanner: View {
                 .font(.caption)
                 .foregroundStyle(.primary)
             Spacer()
-            Button("İzin Ver", action: onRequest)
+            Button("Allow", action: onRequest)
                 .font(.caption.bold())
-            Button("Ayarlar") {
+            Button("Settings") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
@@ -1277,9 +1277,9 @@ struct LocationPermissionBanner: View {
 
     private var message: String {
         switch state {
-        case .denied: return "Konum kapalı. Hız ve harita çalışmaz."
-        case .restricted: return "Konum kısıtlı."
-        case .notDetermined: return "Harita için konum izni gerekli."
+        case .denied: return String(localized: "Location is off. Speed and map won't work.")
+        case .restricted: return String(localized: "Location is restricted.")
+        case .notDetermined: return String(localized: "Location access is needed for the map.")
         case .authorized: return ""
         }
     }

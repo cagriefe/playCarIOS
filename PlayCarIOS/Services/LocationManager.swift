@@ -129,9 +129,18 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     // MARK: - Helpers
 
-    /// Türkçe kardinal yön: K, KD, D, GD, G, GB, B, KB
-    var cardinalDirectionTR: String {
-        let dirs = ["K", "KD", "D", "GD", "G", "GB", "B", "KB"]
+    /// Kısa kardinal yön (uygulama dilinde): N/NE/E… veya K/KD/D…
+    var cardinalDirection: String {
+        let dirs = [
+            String(localized: "N", comment: "Compass: north"),
+            String(localized: "NE", comment: "Compass: northeast"),
+            String(localized: "E", comment: "Compass: east"),
+            String(localized: "SE", comment: "Compass: southeast"),
+            String(localized: "S", comment: "Compass: south"),
+            String(localized: "SW", comment: "Compass: southwest"),
+            String(localized: "W", comment: "Compass: west"),
+            String(localized: "NW", comment: "Compass: northwest"),
+        ]
         let idx = Int((headingDegrees + 22.5) / 45.0) % 8
         return dirs[idx]
     }

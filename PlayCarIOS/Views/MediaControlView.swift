@@ -162,14 +162,22 @@ struct MediaControlView: View {
                 Spacer(minLength: 2)
 
                 // 3. Kontroller (taşmayı önlemek için kompakt: 46/42)
-                HStack(spacing: 24) {
-                    Spacer(minLength: 0)
-                    mediaButton(icon: "backward.fill", size: 42) { player.previous() }
-                    mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 46) {
-                        player.togglePlayPause()
+                // Solda ses çıkışı (Bluetooth / hoparlör / AirPlay); sağdaki boşluk
+                // çalma düğmelerini ortada tutar.
+                HStack(spacing: 0) {
+                    AudioRoutePicker()
+                        .frame(width: 34, height: 34)
+                    Spacer(minLength: 4)
+                    HStack(spacing: 18) {
+                        mediaButton(icon: "backward.fill", size: 42) { player.previous() }
+                        mediaButton(icon: player.isPlaying ? "pause.fill" : "play.fill", size: 46) {
+                            player.togglePlayPause()
+                        }
+                        mediaButton(icon: "forward.fill", size: 42) { player.next() }
                     }
-                    mediaButton(icon: "forward.fill", size: 42) { player.next() }
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 4)
+                    Color.clear
+                        .frame(width: 34, height: 34)
                 }
             }
         }

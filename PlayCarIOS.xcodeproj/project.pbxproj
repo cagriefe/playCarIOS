@@ -45,6 +45,7 @@
 		B10000000000000000000033 /* DNDSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000033 /* DNDSetupView.swift */; };
 		B20000000000000000000005 /* PlayCar DND.shortcut in Resources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000005 /* PlayCar DND.shortcut */; };
 		B10000000000000000000034 /* TripStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000034 /* TripStore.swift */; };
+		B10000000000000000000035 /* AudioRoutePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000035 /* AudioRoutePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,6 +89,7 @@
 		F10000000000000000000033 /* DNDSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DNDSetupView.swift; sourceTree = "<group>"; };
 		F50000000000000000000005 /* PlayCar DND.shortcut */ = {isa = PBXFileReference; lastKnownFileType = file; name = "PlayCar DND.shortcut"; path = "Resources/PlayCar DND.shortcut"; sourceTree = "<group>"; };
 		F10000000000000000000034 /* TripStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000035 /* AudioRoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -170,6 +172,7 @@
 				F10000000000000000000028 /* LocationPermissionBanner.swift */,
 				F10000000000000000000009 /* SpeedometerView.swift */,
 				F10000000000000000000010 /* MediaControlView.swift */,
+				F10000000000000000000035 /* AudioRoutePicker.swift */,
 				F10000000000000000000017 /* CallPanelView.swift */,
 				F10000000000000000000019 /* ManeuverIcon.swift */,
 				F10000000000000000000021 /* QuickDestinationsView.swift */,
@@ -277,6 +280,7 @@
 				B10000000000000000000028 /* LocationPermissionBanner.swift in Sources */,
 				B10000000000000000000009 /* SpeedometerView.swift in Sources */,
 				B10000000000000000000010 /* MediaControlView.swift in Sources */,
+				B10000000000000000000035 /* AudioRoutePicker.swift in Sources */,
 				B10000000000000000000017 /* CallPanelView.swift in Sources */,
 				B10000000000000000000019 /* ManeuverIcon.swift in Sources */,
 				B10000000000000000000021 /* QuickDestinationsView.swift in Sources */,

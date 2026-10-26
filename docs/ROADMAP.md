@@ -53,15 +53,13 @@ afişinden/ekranından yapılır. Uygulama arka planda değil, önde kalsın diy
 - Ev/İş butonunda `MKDirections.calculateETA` ile süre ("Ev · 23 dk"), 5 dk önbellek.
 - Favoriler sayfasında "Ev olarak ayarla / İş olarak ayarla".
 
-## 2. Otomatik hız limiti
+## 2. Otomatik hız limiti ✅ (harici servis yok)
 
-- `SpeedLimitService`: Overpass API `way(around:25,lat,lon)[highway][maxspeed]`,
-  her 300 m ya da 30 sn'de bir, 1 km yarıçaplı önbellek, ağ hatasında son değer.
-- Etiket yoksa yol tipinden Türkiye varsayılanı (residential 50, primary/secondary/trunk 90,
-  bölünmüş trunk 110, motorway 120).
-- `SpeedometerView`: Stepper kaldırılır; yuvarlak kırmızı çerçeveli limit rozeti,
-  "OTO / ELLE" göstergesi; rozete dokununca büyük butonlu limit seçici.
-- Ayar: "Hız limitini internetten al" (varsayılan açık) + README gizlilik notu güncellemesi.
+- Apple ters coğrafi kodlama (yol adı, ülke, mahalle) + ülke limit tablosu; Overpass/OSM kullanılmadı.
+- Türkiye: KGM tablosu + İçişleri 02.06.2022 yazısı — 50 / yerleşim içi bölünmüş 82 / 90 / 110 /
+  otoyol 120, O-3·O-4·O-21·O-31·O-32·O-51·O-52 130, O-5·O-6·O-7 ve Ankara–Niğde 140.
+- Belirsizlikte düşük değer; tahminin çok üstünde sürekli gidilirse önce yerleşim dışı, sonra üst sınıf.
+- Limit rozeti (TAHMİNİ/ELLE) → hızlı seçim; elle seçim yol değişene kadar geçerli; otomatik kapatılabilir.
 
 ## 4. Live Activity / Dynamic Island + Siri (App Intents)
 

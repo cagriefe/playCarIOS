@@ -11,7 +11,7 @@ The app is localized in **English** and **Turkish** and follows the device langu
 - **Search** — `MKLocalSearchCompleter` biased towards the current location, with 300 ms debounce.
 - **Favorites, Home & Work** — save, list, navigate to, and delete places (stored on-device). Mark favorites as Home or Work (swipe right in Favorites; more than one of each is allowed); one-tap chips under the search bar show them with live, traffic-aware travel time.
 - **Recents** — the last 8 destinations you navigated to, shown as chips and in the search list.
-- **Speedometer** — GPS speed in km/h or mph with a user-configurable speed limit and color warnings.
+- **Speedometer** — GPS speed in km/h or mph with color warnings. The speed limit is **estimated** from the road type (from Apple's reverse geocoding) and the country's legal defaults — no third-party service. Turkey has detailed rules (KGM table: 50 / 82 in-city divided roads / 90 / 110 / 120–140 per motorway). Tap the limit sign to correct it in one tap or turn estimation off.
 - **Media** — now playing, playlists and tracks from the device music library via `MediaPlayer`, a seekable progress bar, and the system `MPVolumeView` (volume + AirPlay).
 - **Favorite contacts** — four one-tap call shortcuts between the speedometer and the media card, picked with the system contact picker (no Contacts permission needed). Long-press to call, replace or remove.
 - **Call card** — when a call rings, is dialing or is active, the media card switches to a call view with status and duration (via `CallKit`'s `CXCallObserver`). Calls placed from a favorite show the contact's name and photo.
@@ -87,7 +87,7 @@ Everything runs on-device. The app does no tracking and sends no data off the de
 
 ## Platform notes and limitations
 
-- **Speed limits are manual.** iOS has no public speed-limit API, so the limit is set by the user.
+- **Speed limits are estimates.** iOS has no public speed-limit API. The app estimates the limit from the road name/type and legal defaults; posted signs can differ, so the badge shows "EST." and can be corrected in one tap.
 - **No volume slider or mute.** Setting the system volume from a custom slider is not allowed on iOS, so the system `MPVolumeView` is used instead.
 - **Calls can't be controlled.** Third-party apps can't answer, end, or see the caller of a phone call. The app shows call state and duration; answering, ending and speaker are done from the system call banner/screen. Tip: set *Settings › Phone › Incoming Calls* to *Banner* so the dashboard stays visible.
 - **Not real CarPlay.** The app makes the iPhone screen look like CarPlay. Real CarPlay support (`CarPlay.framework`) needs a separate entitlement from Apple.

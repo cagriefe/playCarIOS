@@ -11,6 +11,7 @@ struct DashboardView: View {
     @StateObject private var telemetry = TelemetryStore()
     @StateObject private var callStore = CallStore()
     @StateObject private var contacts = FavoriteContactsStore()
+    @StateObject private var speedLimits = SpeedLimitStore()
     /// Çentik (notch / Dynamic Island) solda mı? Yatayda iOS iki yana da
     /// aynı güvenli alanı verir; hangi tarafta olduğunu yönelim söyler.
     @State private var notchOnLeft = false
@@ -72,6 +73,9 @@ struct DashboardView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
             updateNotchSide()
         }
+        .onChange(of: locationManager.lastLocation) { _, loc in
+            if let loc { speedLimits.update(loc) }
+        }
     }
 
     /// landscapeRight = telefonun üstü (çentik) solda.
@@ -96,7 +100,7 @@ struct DashboardView: View {
     private var rightColumn: some View {
         VStack(spacing: 8) {
             miniStatus
-            SpeedometerView(location: locationManager)
+            SpeedometerView(location: locationManager, limits: speedLimits)
             FavoriteContactsRow(contacts: contacts, calls: callStore)
             MediaControlView(player: musicManager, calls: callStore)
         }

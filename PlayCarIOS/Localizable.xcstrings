@@ -1,9 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "": {
-      "shouldTranslate": false
-    },
     "%@ kilometers": {
       "comment": "Spoken distance, decimal kilometers",
       "localizations": {
@@ -469,6 +466,16 @@
         }
       }
     },
+    "Divided highway": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bölünmüş yol"
+          }
+        }
+      }
+    },
     "Dropped Pin": {
       "localizations": {
         "tr": {
@@ -496,6 +503,52 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bitir"
+          }
+        }
+      }
+    },
+    "Estimate automatically": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik tahmin et"
+          }
+        }
+      }
+    },
+    "Estimate: %@ → %lld %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Estimate: %1$@ → %2$lld %3$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmin: %1$@ → %2$lld %3$@"
+          }
+        }
+      }
+    },
+    "Estimated": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini"
+          }
+        }
+      }
+    },
+    "Estimates come from the road type and the country's default limits. Signs may differ.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmin, yol tipine ve ülkenin genel limitlerine dayanır. Tabelalar farklı olabilir."
           }
         }
       }
@@ -567,12 +620,12 @@
         }
       }
     },
-    "LIMIT %lld": {
+    "LIMIT": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "LİMİT %lld"
+            "value": "LİMİT"
           }
         }
       }
@@ -633,12 +686,32 @@
         }
       }
     },
+    "Manual": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle"
+          }
+        }
+      }
+    },
     "Media access is needed to show track info.": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Parça bilgisi için medya izni gerekir."
+          }
+        }
+      }
+    },
+    "Motorway": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otoyol"
           }
         }
       }
@@ -856,6 +929,16 @@
         }
       }
     },
+    "Rural road": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şehir dışı"
+          }
+        }
+      }
+    },
     "S": {
       "comment": "Compass: south",
       "localizations": {
@@ -945,6 +1028,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sırala: %@"
+          }
+        }
+      }
+    },
+    "Speed limit %lld %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Speed limit %1$lld %2$@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hız limiti %1$lld %2$@"
           }
         }
       }
@@ -1065,6 +1164,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "İsimsiz liste"
+          }
+        }
+      }
+    },
+    "Urban road": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şehir içi"
+          }
+        }
+      }
+    },
+    "Use estimate": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahmini kullan"
           }
         }
       }

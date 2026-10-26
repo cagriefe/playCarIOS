@@ -1,23 +1,40 @@
 import SwiftUI
 
 /// CarPlay tarzı hız kartı: yatay düzen, solda büyük rakam,
-/// sağda limit + ince gauge + durum. Yuvarlak yüzen kart.
+/// sağda tipografik limit + limit çizgili ince gauge + durum. Yuvarlak yüzen kart.
 struct SpeedometerView: View {
     @ObservedObject var location: LocationManager
+    @ObservedObject var limits: SpeedLimitStore
 
-    /// Kullanıcı ayarlı hız limiti (iOS'ta public hız-limiti API'si yok).
+    /// Otomatik tahmin kapalıyken kalıcı elle limit (iOS'ta public hız-limiti API'si yok).
     /// Birim bölgeye göre: km/h veya mph (ayrı saklanır, dönüşüm yuvarlaması olmasın).
     @AppStorage("speedLimitKmh") private var speedLimitKmh: Double = 90
     @AppStorage("speedLimitMph") private var speedLimitMph: Double = 55
+    @State private var showPicker = false
 
     private let imperial = NavFormat.usesImperial
     private var unitLabel: String { imperial ? "mph" : "km/h" }
     private var speed: Double { imperial ? location.speedKmh / 1.609344 : location.speedKmh }
-    private var speedLimit: Double { imperial ? speedLimitMph : speedLimitKmh }
-    private var limitBinding: Binding<Double> { imperial ? $speedLimitMph : $speedLimitKmh }
-    private var limitRange: ClosedRange<Double> { imperial ? 20...85 : 30...140 }
     /// "Limite yaklaşıyor" eşiği: 10 km/h ≈ 5 mph.
     private var warnMargin: Double { imperial ? 5 : 10 }
+
+    private var source: SpeedLimitStore.Source {
+        guard limits.autoEnabled else { return .manual }
+        if limits.overrideKmh != nil { return .override }
+        return limits.estimateKmh != nil ? .estimated : .manual
+    }
+
+    /// Görüntü biriminde limit.
+    private var speedLimit: Double {
+        let kmh: Double?
+        switch source {
+        case .override: kmh = limits.overrideKmh
+        case .estimated: kmh = limits.estimateKmh
+        case .manual: kmh = nil
+        }
+        guard let kmh else { return imperial ? speedLimitMph : speedLimitKmh }
+        return (imperial ? kmh / 1.609344 : kmh).rounded()
+    }
 
     var body: some View {
         VStack(spacing: 3) {
@@ -35,14 +52,15 @@ struct SpeedometerView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("LIMIT \(Int(speedLimit))")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                    Stepper("", value: limitBinding, in: limitRange, step: 5)
-                        .labelsHidden()
-                        .controlSize(.mini)
+                Button { showPicker = true } label: {
+                    SpeedLimitBadge(value: Int(speedLimit), over: speed > speedLimit)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("Speed limit \(Int(speedLimit)) \(unitLabel)"))
+                .popover(isPresented: $showPicker, arrowEdge: .leading) {
+                    limitPicker
+                        .presentationCompactAdaptation(.popover)
                 }
             }
 
@@ -53,6 +71,13 @@ struct SpeedometerView: View {
                     RoundedRectangle(cornerRadius: 3)
                         .fill(speedColor)
                         .frame(width: geo.size.width * gaugeProgress)
+                }
+                // Limit çizgisi: çubuk 0…1,5×limit, yani limit hep üçte iki noktasında.
+                .overlay(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.85))
+                        .frame(width: 2, height: 9)
+                        .offset(x: geo.size.width * (2.0 / 3.0) - 1)
                 }
             }
             .frame(height: 5)
@@ -66,6 +91,61 @@ struct SpeedometerView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// Hızlı seçim: ülkenin standart limitleri büyük butonlarla.
+    private var limitPicker: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("Estimate automatically", isOn: $limits.autoEnabled)
+                .font(.subheadline.bold())
+            if limits.autoEnabled, let cls = limits.roadClass, let est = limits.estimateKmh {
+                let shown = Int((imperial ? est / 1.609344 : est).rounded())
+                Text("Estimate: \(cls.title) → \(shown) \(unitLabel)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(56), spacing: 8), count: 4), spacing: 8) {
+                ForEach(CountrySpeedLimits.presets(country: limits.countryCode ?? Locale.current.region?.identifier,
+                                                   imperial: imperial), id: \.self) { value in
+                    Button { pick(value) } label: {
+                        Text("\(value)")
+                            .font(.title3.bold())
+                            .monospacedDigit()
+                            .frame(width: 56, height: 44)
+                            .background(Int(speedLimit) == value ? Color.accentColor : Color.white.opacity(0.12),
+                                        in: RoundedRectangle(cornerRadius: 10))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if source == .override {
+                Button("Use estimate") {
+                    limits.clearOverride()
+                    showPicker = false
+                }
+                .font(.subheadline.bold())
+            }
+            Text("Estimates come from the road type and the country's default limits. Signs may differ.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(width: 280)
+    }
+
+    /// Otomatik açıkken bu yol için geçici seçim; kapalıyken kalıcı limit.
+    private func pick(_ value: Int) {
+        let v = Double(value)
+        if limits.autoEnabled {
+            limits.setOverride(kmh: imperial ? v * 1.609344 : v)
+        } else if imperial {
+            speedLimitMph = v
+        } else {
+            speedLimitKmh = v
+        }
+        showPicker = false
     }
 
     private var gaugeProgress: Double {
@@ -83,6 +163,16 @@ struct SpeedometerView: View {
         if speed > speedLimit { return String(localized: "Over the speed limit!") }
         if speed > speedLimit - warnMargin { return String(localized: "Approaching the limit") }
         if speed < 1 { return String(localized: "Stopped") }
+        // Normal sürüşte limitin kaynağı yazılır: tahmin mi, elle mi.
+        switch source {
+        case .estimated:
+            return ([String(localized: "Estimated")] + [limits.roadClass?.title, limits.roadName].compactMap { $0 })
+                .joined(separator: " · ")
+        case .override:
+            return ([String(localized: "Manual")] + [limits.roadName].compactMap { $0 }).joined(separator: " · ")
+        case .manual:
+            break
+        }
         return String(localized: "Limit: \(Int(speedLimit)) \(unitLabel)")
     }
 }

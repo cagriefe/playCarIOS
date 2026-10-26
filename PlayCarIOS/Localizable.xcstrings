@@ -206,6 +206,26 @@
         }
       }
     },
+    "Add Shortcut": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kestirmeyi Ekle"
+          }
+        }
+      }
+    },
+    "Add Shortcut Again": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kestirmeyi Yeniden Ekle"
+          }
+        }
+      }
+    },
     "Add Work": {
       "localizations": {
         "tr": {
@@ -292,6 +312,26 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sanatçı (A-Z)"
+          }
+        }
+      }
+    },
+    "Audio output": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses çıkışı"
+          }
+        }
+      }
+    },
+    "Average": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ortalama"
           }
         }
       }
@@ -396,6 +436,16 @@
         }
       }
     },
+    "Come back to PlayCar — Do Not Disturb switches automatically.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PlayCar’a geri dönün — Rahatsız Etme kendiliğinden ayarlanır."
+          }
+        }
+      }
+    },
     "Connected": {
       "localizations": {
         "tr": {
@@ -466,12 +516,42 @@
         }
       }
     },
+    "Distance": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mesafe"
+          }
+        }
+      }
+    },
     "Divided highway": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Bölünmüş yol"
+          }
+        }
+      }
+    },
+    "Do Not Disturb": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rahatsız Etme"
+          }
+        }
+      }
+    },
+    "Driving": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüş"
           }
         }
       }
@@ -549,6 +629,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tahmin, yol tipine ve ülkenin genel limitlerine dayanır. Tabelalar farklı olabilir."
+          }
+        }
+      }
+    },
+    "Fastest": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En hızlı"
           }
         }
       }
@@ -799,12 +889,42 @@
         }
       }
     },
+    "Off": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapalı"
+          }
+        }
+      }
+    },
+    "On": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık"
+          }
+        }
+      }
+    },
     "On Hold": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Beklemede"
+          }
+        }
+      }
+    },
+    "One-Time Setup": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir Kerelik Kurulum"
           }
         }
       }
@@ -905,6 +1025,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Değiştir"
+          }
+        }
+      }
+    },
+    "Reset trip": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yolculuğu sıfırla"
           }
         }
       }
@@ -1022,6 +1152,26 @@
         }
       }
     },
+    "Shortcut Not Found": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kestirme Bulunamadı"
+          }
+        }
+      }
+    },
+    "Shows the trip summary": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yolculuk özetini gösterir"
+          }
+        }
+      }
+    },
     "Sort: %@": {
       "localizations": {
         "tr": {
@@ -1078,6 +1228,36 @@
         }
       }
     },
+    "TRIP": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "YOLCULUK"
+          }
+        }
+      }
+    },
+    "Tap Add Shortcut and choose Shortcuts.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kestirmeyi Ekle’ye dokunun ve Kestirmeler’i seçin."
+          }
+        }
+      }
+    },
+    "Tap “Add Shortcut”.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“Kestirme Ekle”ye dokunun."
+          }
+        }
+      }
+    },
     "Then": {
       "localizations": {
         "tr": {
@@ -1118,12 +1298,42 @@
         }
       }
     },
+    "Top speed": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yüksek"
+          }
+        }
+      }
+    },
     "Tracks": {
       "localizations": {
         "tr": {
           "stringUnit": {
             "state": "translated",
             "value": "Parçalar"
+          }
+        }
+      }
+    },
+    "Turn Off Do Not Disturb": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rahatsız Etme’yi Kapat"
+          }
+        }
+      }
+    },
+    "Turn On Do Not Disturb": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rahatsız Etme’yi Aç"
           }
         }
       }
@@ -1245,6 +1455,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Varış noktasına ulaştınız."
+          }
+        }
+      }
+    },
+    "iOS doesn't let apps switch Do Not Disturb directly. PlayCar comes with a ready-made shortcut that does it — add it once and the button works with a single tap.": {
+      "localizations": {
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS, uygulamaların Rahatsız Etme’yi doğrudan açıp kapatmasına izin vermiyor. PlayCar bunu yapan hazır bir kestirmeyle geliyor — bir kez ekleyin, buton tek dokunuşla çalışsın."
           }
         }
       }

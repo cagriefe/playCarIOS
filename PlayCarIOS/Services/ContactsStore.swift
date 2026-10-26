@@ -90,7 +90,7 @@ enum ContactPicker {
     private static var active: Coordinator?
 
     static func present(completion: @escaping (FavoriteContact?) -> Void) {
-        guard let presenter = topViewController() else { completion(nil); return }
+        guard let presenter = UIApplication.topViewController() else { completion(nil); return }
         let coordinator = Coordinator { contact in
             completion(contact)
             active = nil
@@ -103,16 +103,6 @@ enum ContactPicker {
         // Tek numaralı kişi doğrudan seçilir; çok numaralıda numara sorulur.
         picker.predicateForSelectionOfContact = NSPredicate(format: "phoneNumbers.@count == 1")
         presenter.present(picker, animated: true)
-    }
-
-    private static func topViewController() -> UIViewController? {
-        let scene = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first { $0.activationState == .foregroundActive }
-        let window = scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first
-        var top = window?.rootViewController
-        while let presented = top?.presentedViewController { top = presented }
-        return top
     }
 
     final class Coordinator: NSObject, CNContactPickerDelegate {

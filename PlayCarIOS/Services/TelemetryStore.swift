@@ -7,12 +7,6 @@ import Combine
 final class TelemetryStore: ObservableObject {
     @Published var now = Date()
     @Published var batteryLevel: Float = -1
-    @Published var keepScreenOn: Bool {
-        didSet {
-            UserDefaults.standard.set(keepScreenOn, forKey: "keepScreenOn")
-            UIApplication.shared.isIdleTimerDisabled = keepScreenOn
-        }
-    }
 
     private var timer: Timer?
 
@@ -33,9 +27,6 @@ final class TelemetryStore: ObservableObject {
         UIDevice.current.isBatteryMonitoringEnabled = true
         // İzleme açıldıktan sonra gerçek değeri oku (öncesinde -1 döner).
         self.batteryLevel = UIDevice.current.batteryLevel
-        self.keepScreenOn = UserDefaults.standard.object(forKey: "keepScreenOn") == nil
-            ? true
-            : UserDefaults.standard.bool(forKey: "keepScreenOn")
 
         scheduleMinuteTimer()
 

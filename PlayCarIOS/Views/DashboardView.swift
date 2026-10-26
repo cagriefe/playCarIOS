@@ -12,6 +12,8 @@ struct DashboardView: View {
     @StateObject private var callStore = CallStore()
     @StateObject private var contacts = FavoriteContactsStore()
     @StateObject private var speedLimits = SpeedLimitStore()
+    @StateObject private var dnd = DoNotDisturbController()
+    @Environment(\.scenePhase) private var scenePhase
     /// Çentik (notch / Dynamic Island) solda mı? Yatayda iOS iki yana da
     /// aynı güvenli alanı verir; hangi tarafta olduğunu yönelim söyler.
     @State private var notchOnLeft = false
@@ -76,6 +78,18 @@ struct DashboardView: View {
         .onChange(of: locationManager.lastLocation) { _, loc in
             if let loc { speedLimits.update(loc) }
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            UIApplication.shared.isIdleTimerDisabled = true
+            // Kestirmeler'den dönüş (Rahatsız Etme kurulumu).
+            dnd.appDidBecomeActive()
+        }
+        .onOpenURL { url in
+            dnd.handle(url)
+        }
+        .sheet(isPresented: $dnd.showSetup) {
+            DNDSetupView(dnd: dnd)
+        }
     }
 
     /// landscapeRight = telefonun üstü (çentik) solda.
@@ -106,7 +120,7 @@ struct DashboardView: View {
         }
     }
 
-    /// Sağ panele sığan tek satırlık durum: saat + tarih + pusula + pil + kilit.
+    /// Sağ panele sığan tek satırlık durum: saat + tarih + pusula + pil + Rahatsız Etme.
     private var miniStatus: some View {
         HStack(spacing: 6) {
             Text(telemetry.timeString)
@@ -136,18 +150,39 @@ struct DashboardView: View {
                     .monospacedDigit()
                     .lineLimit(1)
             }
-            Button {
-                telemetry.keepScreenOn.toggle()
-            } label: {
-                Image(systemName: telemetry.keepScreenOn ? "lock.open.fill" : "lock.fill")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 22)
-            }
+            dndButton
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Rahatsız Etme: dokun → aç/kapat (Kestirmeler üzerinden),
+    /// uzun bas → durumu doğrudan seç (iOS'ta başka yerden değiştirildiyse).
+    private var dndButton: some View {
+        Button {
+            dnd.toggle()
+        } label: {
+            Image(systemName: dnd.isOn ? "moon.fill" : "moon")
+                .font(.caption.bold())
+                .foregroundStyle(dnd.isOn ? Color.indigo : Color.secondary)
+                .frame(width: 32, height: 24)
+                .background(dnd.isOn ? Color.indigo.opacity(0.25) : Color.clear, in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button { dnd.set(true) } label: {
+                Label("Turn On Do Not Disturb", systemImage: "moon.fill")
+            }
+            Button { dnd.set(false) } label: {
+                Label("Turn Off Do Not Disturb", systemImage: "moon")
+            }
+            Button { dnd.showSetup = true } label: {
+                Label("Add Shortcut Again", systemImage: "square.and.arrow.down")
+            }
+        }
+        .accessibilityLabel("Do Not Disturb")
+        .accessibilityValue(dnd.isOn ? Text("On") : Text("Off"))
     }
 
     private var batteryIcon: String {

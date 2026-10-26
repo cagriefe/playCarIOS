@@ -9,14 +9,9 @@ struct PlayCarIOSApp: App {
             DashboardView()
                 .preferredColorScheme(.dark)
                 .onAppear {
-                    // Sürüş sırasında ekranın kararmasını engelle.
-                    // Ayarlardan kapatılabilir olmalı (App Store / pil politikası için).
-                    // Bkz: TelemetryBarView -> ekran kilidi toggle'ı.
-                    if UserDefaults.standard.object(forKey: "keepScreenOn") == nil {
-                        UserDefaults.standard.set(true, forKey: "keepScreenOn")
-                    }
-                    UIApplication.shared.isIdleTimerDisabled =
-                        UserDefaults.standard.bool(forKey: "keepScreenOn")
+                    // Araç ekranı: PlayCar açıkken ekran hiç kararmaz. iOS bunu
+                    // sadece uygulama öndeyken uygular; çıkınca telefon normale döner.
+                    UIApplication.shared.isIdleTimerDisabled = true
                 }
         }
     }

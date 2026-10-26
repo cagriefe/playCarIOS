@@ -17,8 +17,8 @@
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
-				<!-- CA92.1: only the app's own settings
-				     (keepScreenOn, speedLimitKmh) -->
+				<!-- CA92.1: only the app's own data and settings
+				     (favorites, recents, speed limit, Do Not Disturb state) -->
 				<string>CA92.1</string>
 			</array>
 		</dict>

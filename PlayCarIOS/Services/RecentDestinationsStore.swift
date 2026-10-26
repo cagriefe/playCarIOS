@@ -76,14 +76,6 @@ final class ShortcutETAService: ObservableObject {
     private var cache: [UUID: (at: Date, from: CLLocation, target: CLLocationCoordinate2D)] = [:]
     private var inFlight: Set<UUID> = []
 
-    private static let formatter: DateComponentsFormatter = {
-        let f = DateComponentsFormatter()
-        f.unitsStyle = .abbreviated
-        f.allowedUnits = [.hour, .minute]
-        f.maximumUnitCount = 2
-        return f
-    }()
-
     func refresh(for places: [FavoritePlace], from location: CLLocation) {
         for place in places {
             if let c = cache[place.id],
@@ -116,6 +108,6 @@ final class ShortcutETAService: ObservableObject {
     /// "23 dk" / "23 min", "1 sa 5 dk" / "1 hr, 5 min".
     func text(for place: FavoritePlace) -> String? {
         guard let t = travelTimes[place.id] else { return nil }
-        return Self.formatter.string(from: max(60, (t / 60).rounded() * 60))
+        return NavFormat.duration(t)
     }
 }

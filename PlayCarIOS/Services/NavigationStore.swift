@@ -341,16 +341,7 @@ final class NavigationStore: NSObject, ObservableObject {
         var p = index - 1
         while p >= 0, stepGeometry[p].length < 1 { p -= 1 }
         guard p >= 0 else { return nil }
-        let incoming = stepGeometry[p], outgoing = stepGeometry[index]
-        guard outgoing.length >= 1,
-              let inBearing = ManeuverClassifier.bearing(
-                from: incoming.point(at: max(incoming.length - 30, 0)),
-                to: incoming.point(at: incoming.length)),
-              let outBearing = ManeuverClassifier.bearing(
-                from: outgoing.point(at: 0),
-                to: outgoing.point(at: min(30, outgoing.length)))
-        else { return nil }
-        return ManeuverClassifier.turnAngle(inBearing: inBearing, outBearing: outBearing)
+        return StepGeometry.turnAngle(from: stepGeometry[p], to: stepGeometry[index])
     }
 
     /// Yeni adıma girildi (manevra yapıldı): sıradaki manevrayı oku.
@@ -461,66 +452,9 @@ final class NavigationStore: NSObject, ObservableObject {
     // MARK: - Rota geometrisi
 
     /// Konumun adım çizgisine dik uzaklığı ve adımın yol boyunca kalan uzunluğu.
-    /// Kuş uçuşu değil, çizgi üzerinden ölçülür (virajlı yolda doğru mesafe).
     private func project(_ p: MKMapPoint, ontoStep index: Int) -> (offset: Double, remaining: Double)? {
         guard stepGeometry.indices.contains(index) else { return nil }
-        let g = stepGeometry[index]
-        let pts = g.points
-        guard pts.count > 1 else { return nil }
-        var bestOffset = Double.greatestFiniteMagnitude
-        var bestAlong = 0.0
-        for i in 0..<(pts.count - 1) {
-            let a = pts[i], b = pts[i + 1]
-            let dx = b.x - a.x, dy = b.y - a.y
-            let len2 = dx * dx + dy * dy
-            var t = len2 > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2 : 0
-            t = min(max(t, 0), 1)
-            let proj = MKMapPoint(x: a.x + t * dx, y: a.y + t * dy)
-            let d = p.distance(to: proj)
-            if d < bestOffset {
-                bestOffset = d
-                bestAlong = g.cumulative[i] + a.distance(to: proj)
-            }
-        }
-        return (bestOffset, max(g.length - bestAlong, 0))
-    }
-}
-
-/// Adım çizgisinin noktaları + başlangıçtan itibaren birikimli uzunluk (m).
-private struct StepGeometry {
-    let points: [MKMapPoint]
-    let cumulative: [Double]
-    var length: Double { cumulative.last ?? 0 }
-
-    /// Çizgi boyunca `distance` metredeki nokta (doğrusal ara değer).
-    func point(at distance: Double) -> MKMapPoint {
-        guard let first = points.first else { return MKMapPoint() }
-        guard distance > 0 else { return first }
-        for i in 1..<points.count where cumulative[i] >= distance {
-            let segment = cumulative[i] - cumulative[i - 1]
-            let t = segment > 0 ? (distance - cumulative[i - 1]) / segment : 0
-            let a = points[i - 1], b = points[i]
-            return MKMapPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
-        }
-        return points[points.count - 1]
-    }
-
-    init(polyline: MKPolyline) {
-        let n = polyline.pointCount
-        let ptr = polyline.points()
-        var pts: [MKMapPoint] = []
-        var cum: [Double] = []
-        pts.reserveCapacity(n)
-        cum.reserveCapacity(n)
-        var total = 0.0
-        for i in 0..<n {
-            let pt = ptr[i]
-            if let last = pts.last { total += last.distance(to: pt) }
-            pts.append(pt)
-            cum.append(total)
-        }
-        points = pts
-        cumulative = cum
+        return stepGeometry[index].project(p)
     }
 }
 
@@ -558,76 +492,5 @@ extension NavigationStore: AVSpeechSynthesizerDelegate {
             guard let self, !self.speaker.isSpeaking else { return }
             self.releaseAudioSession()
         }
-    }
-}
-
-// MARK: - Format
-
-enum NavFormat {
-    /// ABD ve İngiltere'de yol mesafeleri mil, hızlar mph.
-    static var usesImperial: Bool {
-        let system = Locale.current.measurementSystem
-        return system == .us || system == .uk
-    }
-
-    private static func decimal(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(1)))
-    }
-
-    /// Ekran: "350 m" / "2,3 km" — "500 ft" / "0.3 mi" (yerel ondalık ayırıcı).
-    static func distance(_ meters: Double) -> String {
-        if usesImperial {
-            let miles = meters / 1609.344
-            if miles < 0.1 {
-                let feet = max(50, Int((meters * 3.28084 / 50).rounded()) * 50)
-                return "\(feet) ft"
-            }
-            return miles < 10 ? "\(decimal(miles)) mi" : "\(Int(miles.rounded())) mi"
-        }
-        if meters < 950 {
-            return "\(Int(meters.rounded())) m"
-        }
-        return "\(decimal(meters / 1000)) km"
-    }
-
-    /// Sesli okunuş: "300 metre" / "300 meters", "1,5 kilometre", "500 feet", "2 miles".
-    static func spokenDistance(_ meters: Double) -> String {
-        if usesImperial {
-            let miles = meters / 1609.344
-            if miles < 0.1 {
-                let feet = max(50, Int((meters * 3.28084 / 50).rounded()) * 50)
-                return String(localized: "\(feet) feet", comment: "Spoken distance")
-            }
-            let rounded = (miles * 10).rounded() / 10
-            if rounded == rounded.rounded() {
-                return String(localized: "\(Int(rounded)) miles", comment: "Spoken distance, whole miles")
-            }
-            return String(localized: "\(decimal(rounded)) miles", comment: "Spoken distance, decimal miles")
-        }
-        if meters < 950 {
-            let rounded = max(50, Int((meters / 50).rounded()) * 50)
-            return String(localized: "\(rounded) meters", comment: "Spoken distance")
-        }
-        let km = (meters / 100).rounded() / 10
-        if km == km.rounded() {
-            return String(localized: "\(Int(km)) kilometers", comment: "Spoken distance, whole kilometers")
-        }
-        return String(localized: "\(decimal(km)) kilometers", comment: "Spoken distance, decimal kilometers")
-    }
-
-    /// "In 300 meters, turn right" / "300 metre sonra, sağa dönün".
-    static func spokenIn(_ meters: Double, _ instruction: String) -> String {
-        String(localized: "In \(spokenDistance(meters)), \(instruction)", comment: "Spoken: distance, then maneuver")
-    }
-
-    /// Bölgeye göre 24 saat ya da 12 saat (AM/PM).
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.setLocalizedDateFormatFromTemplate("jmm")
-        return f
-    }()
-
-    static func time(_ date: Date) -> String {
-        timeFormatter.string(from: date)
     }
 }

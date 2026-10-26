@@ -38,6 +38,8 @@
 		B10000000000000000000026 /* SearchBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000026 /* SearchBarView.swift */; };
 		B10000000000000000000027 /* FavoritesSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000027 /* FavoritesSheetView.swift */; };
 		B10000000000000000000028 /* LocationPermissionBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000028 /* LocationPermissionBanner.swift */; };
+		B10000000000000000000029 /* RouteGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000029 /* RouteGeometry.swift */; };
+		B10000000000000000000030 /* NavFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000030 /* NavFormat.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -74,6 +76,8 @@
 		F10000000000000000000026 /* SearchBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBarView.swift; sourceTree = "<group>"; };
 		F10000000000000000000027 /* FavoritesSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesSheetView.swift; sourceTree = "<group>"; };
 		F10000000000000000000028 /* LocationPermissionBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationPermissionBanner.swift; sourceTree = "<group>"; };
+		F10000000000000000000029 /* RouteGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RouteGeometry.swift; sourceTree = "<group>"; };
+		F10000000000000000000030 /* NavFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavFormat.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +132,8 @@
 				F10000000000000000000006 /* TelemetryStore.swift */,
 				F10000000000000000000012 /* FavoritesStore.swift */,
 				F10000000000000000000013 /* NavigationStore.swift */,
+				F10000000000000000000029 /* RouteGeometry.swift */,
+				F10000000000000000000030 /* NavFormat.swift */,
 				F10000000000000000000014 /* CallStore.swift */,
 				F10000000000000000000015 /* ContactsStore.swift */,
 				F10000000000000000000018 /* Maneuver.swift */,
@@ -239,6 +245,8 @@
 				B10000000000000000000006 /* TelemetryStore.swift in Sources */,
 				B10000000000000000000012 /* FavoritesStore.swift in Sources */,
 				B10000000000000000000013 /* NavigationStore.swift in Sources */,
+				B10000000000000000000029 /* RouteGeometry.swift in Sources */,
+				B10000000000000000000030 /* NavFormat.swift in Sources */,
 				B10000000000000000000014 /* CallStore.swift in Sources */,
 				B10000000000000000000007 /* DashboardView.swift in Sources */,
 				B10000000000000000000008 /* MapPanelView.swift in Sources */,

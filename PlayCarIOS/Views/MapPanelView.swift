@@ -324,7 +324,7 @@ struct MapPanelView: View {
             case .navigating:
                 selectedPlace = nil
                 followMode = .heading
-                if let coordinate = nav.destinationCoordinate {
+                if let coordinate = nav.destinationCoordinate, !Self.isDebugNavRun {
                     recents.add(name: nav.destinationName, address: previewSubtitle, coordinate: coordinate)
                 }
             case .idle:
@@ -338,6 +338,15 @@ struct MapPanelView: View {
             locationManager.setNavigationActive(phase == .navigating)
             pokeControls()
         }
+    }
+
+    /// DEBUG test rotası (`-PCDebugNavTo`) son hedeflere yazılmaz.
+    private static var isDebugNavRun: Bool {
+        #if DEBUG
+        return DebugNav.target != nil
+        #else
+        return false
+        #endif
     }
 
     /// Kontrolleri göster + 4 sn sonra otomatik gizle (temiz sürüş görünümü).

@@ -82,10 +82,16 @@ struct DashboardView: View {
             trip.update(loc)
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active else { return }
-            UIApplication.shared.isIdleTimerDisabled = true
-            // Kestirmeler'den dönüş (Rahatsız Etme kurulumu).
-            dnd.appDidBecomeActive()
+            switch phase {
+            case .active:
+                UIApplication.shared.isIdleTimerDisabled = true
+                // Kestirmeler'den dönüş (Rahatsız Etme kurulumu).
+                dnd.appDidBecomeActive()
+            case .background:
+                dnd.appDidEnterBackground()
+            default:
+                break
+            }
         }
         .onOpenURL { url in
             dnd.handle(url)

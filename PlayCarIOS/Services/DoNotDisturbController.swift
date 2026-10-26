@@ -6,6 +6,7 @@ import Combine
 /// uygulamayla gelen hazır "PlayCar DND" kestirmesi Kestirmeler üzerinden
 /// çalıştırılır (yarım saniye Kestirmeler görünür, sonra PlayCar'a dönülür).
 /// İlk kullanımda kestirme bir kez Kestirmeler'e eklenir ("Kestirme Ekle" onayı).
+@MainActor
 final class DoNotDisturbController: NSObject, ObservableObject {
     /// Son bilinen durum. Kontrol Merkezi'nden değiştirilirse uygulama bilemez;
     /// uzun basma menüsünden açık / kapalı doğrudan seçilebilir.
@@ -28,6 +29,9 @@ final class DoNotDisturbController: NSObject, ObservableObject {
     /// Kurulumdan dönünce uygulanacak durum.
     private var pending: Bool?
     private var awaitingInstallReturn = false
+    /// Kestirmeler'e gerçekten geçildi mi (menü kapanırken gelen kısa
+    /// "aktif" olayları kurulum dönüşü sayılmasın).
+    private var leftAppForInstall = false
     private var documentController: UIDocumentInteractionController?
 
     init(defaults: UserDefaults = .standard) {
@@ -92,10 +96,15 @@ final class DoNotDisturbController: NSObject, ObservableObject {
         }
     }
 
+    func appDidEnterBackground() {
+        if awaitingInstallReturn { leftAppForInstall = true }
+    }
+
     /// Kestirmeler'den PlayCar'a dönüldü: bekleyen isteği uygula.
     func appDidBecomeActive() {
-        guard awaitingInstallReturn else { return }
+        guard awaitingInstallReturn, leftAppForInstall else { return }
         awaitingInstallReturn = false
+        leftAppForInstall = false
         showSetup = false
         if let pending {
             self.pending = nil
@@ -107,6 +116,7 @@ final class DoNotDisturbController: NSObject, ObservableObject {
         // İyimser: dönüşte çalıştırılır; eklenmediyse x-error kurulumu yeniden açar.
         installed = true
         awaitingInstallReturn = true
+        leftAppForInstall = false
     }
 
     private func showMissing() {
@@ -116,14 +126,17 @@ final class DoNotDisturbController: NSObject, ObservableObject {
     }
 }
 
+// UIKit bu geri çağrıları ana iş parçacığında yapar.
 extension DoNotDisturbController: UIDocumentInteractionControllerDelegate {
-    func documentInteractionController(_ controller: UIDocumentInteractionController,
-                                       willBeginSendingToApplication application: String?) {
-        didSendToShortcuts()
+    nonisolated func documentInteractionController(_ controller: UIDocumentInteractionController,
+                                                   willBeginSendingToApplication application: String?) {
+        MainActor.assumeIsolated { didSendToShortcuts() }
     }
 
-    func documentInteractionControllerDidDismissOpenInMenu(_ controller: UIDocumentInteractionController) {
-        if !awaitingInstallReturn { documentController = nil }
+    nonisolated func documentInteractionControllerDidDismissOpenInMenu(_ controller: UIDocumentInteractionController) {
+        MainActor.assumeIsolated {
+            if !awaitingInstallReturn { documentController = nil }
+        }
     }
 }
 

@@ -41,16 +41,17 @@ struct SpeedometerView: View {
     }
 
     var body: some View {
-        // Hız içeriği yerinde kalır (kart yüksekliği değişmesin), yolculuk üstüne biner.
-        ZStack {
-            speedContent
-                .opacity(showTrip ? 0 : 1)
-                .allowsHitTesting(!showTrip)
-            if showTrip {
-                tripContent
-                    .transition(.opacity)
+        // Hız içeriği yerinde kalır, yolculuk onun üstüne biner: kart boyu hiç değişmez
+        // (overlay, alttaki görünümün boyutunu alır; sağ sütun kaymaz).
+        speedContent
+            .opacity(showTrip ? 0 : 1)
+            .allowsHitTesting(!showTrip)
+            .overlay {
+                if showTrip {
+                    tripContent
+                        .transition(.opacity)
+                }
             }
-        }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))

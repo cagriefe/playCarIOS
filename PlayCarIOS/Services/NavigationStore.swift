@@ -17,6 +17,10 @@ final class NavigationStore: NSObject, ObservableObject {
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var route: MKRoute?
+    /// Önizlemede seçilebilir rotalar (en hızlı başta, en fazla 3).
+    /// Navigasyon başlayınca boşalır; sürüş sadece seçilen rotayla yapılır.
+    @Published private(set) var routeOptions: [MKRoute] = []
+    @Published private(set) var selectedRouteIndex = 0
     @Published private(set) var destinationName = ""
     var destinationCoordinate: CLLocationCoordinate2D? { destinationLocation?.coordinate }
     @Published private(set) var currentStepIndex = 0
@@ -77,13 +81,18 @@ final class NavigationStore: NSObject, ObservableObject {
         destinationName = item.name ?? String(localized: "Destination")
         lastKnownLocation = userLocation
         phase = .calculating
-        calculate(from: userLocation) { [weak self] route in
+        calculate(from: userLocation, alternates: true) { [weak self] routes in
             guard let self else { return }
-            guard let route else {
+            guard let route = routes.first else {
                 self.phase = .idle
                 self.lastError = String(localized: "Couldn't calculate a route. Check your internet connection.")
                 return
             }
+            self.routeOptions = Array(routes.prefix(3))
+            self.selectedRouteIndex = 0
+            #if DEBUG
+            print("PCDBG ROUTES " + self.routeOptions.map { "\(Int($0.expectedTravelTime / 60))min/\(Int($0.distance))m/\($0.name)" }.joined(separator: " | "))
+            #endif
             self.setRoute(route)
             self.phase = .preview
             self.refreshPreviewStats()
@@ -93,8 +102,17 @@ final class NavigationStore: NSObject, ObservableObject {
         }
     }
 
+    /// Önizlemede başka bir rotayı seç (kart veya haritadaki gri çizgi).
+    func selectRoute(at index: Int) {
+        guard phase == .preview, routeOptions.indices.contains(index), index != selectedRouteIndex else { return }
+        selectedRouteIndex = index
+        setRoute(routeOptions[index])
+        refreshPreviewStats()
+    }
+
     func start() {
         guard phase == .preview, let route else { return }
+        routeOptions = []
         currentStepIndex = Self.firstDrivableStep(in: route)
         offRouteStrikes = 0
         phase = .navigating
@@ -118,6 +136,8 @@ final class NavigationStore: NSObject, ObservableObject {
         speaker.stopSpeaking(at: .immediate)
         releaseAudioSession()
         route = nil
+        routeOptions = []
+        selectedRouteIndex = 0
         stepGeometry = []
         stepManeuvers = []
         if clearDestination { destination = nil; destinationLocation = nil; destinationName = "" }
@@ -231,25 +251,27 @@ final class NavigationStore: NSObject, ObservableObject {
 
     // MARK: - Private
 
-    private func calculate(from userLocation: CLLocation, completion: @escaping (MKRoute?) -> Void) {
-        guard let destination else { completion(nil); return }
+    /// Rotalar, trafik bilgili süreye göre en hızlıdan yavaşa.
+    private func calculate(from userLocation: CLLocation, alternates: Bool,
+                           completion: @escaping ([MKRoute]) -> Void) {
+        guard let destination else { completion([]); return }
         let request = MKDirections.Request()
         request.source = MKMapItem(placemark: MKPlacemark(coordinate: userLocation.coordinate))
         request.destination = destination
         request.transportType = .automobile
-        request.requestsAlternateRoutes = false
+        request.requestsAlternateRoutes = alternates
         let directions = MKDirections(request: request)
         activeRequest = directions
         directions.calculate { [weak self] response, error in
             guard let self, self.activeRequest === directions else { return }
-            if error != nil { completion(nil); return }
-            completion(response?.routes.first)
+            if error != nil { completion([]); return }
+            completion((response?.routes ?? []).sorted { $0.expectedTravelTime < $1.expectedTravelTime })
         }
     }
 
     private func recalculate(from userLocation: CLLocation) {
-        calculate(from: userLocation) { [weak self] route in
-            guard let self, self.phase == .navigating, let route else { return }
+        calculate(from: userLocation, alternates: false) { [weak self] routes in
+            guard let self, self.phase == .navigating, let route = routes.first else { return }
             self.setRoute(route)
             self.currentStepIndex = Self.firstDrivableStep(in: route)
             self.speak(String(localized: "Route recalculated."))

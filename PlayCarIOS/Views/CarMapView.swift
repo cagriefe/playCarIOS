@@ -26,6 +26,8 @@ struct CarMapView: UIViewRepresentable {
     @Binding var followMode: MapFollowMode
     var favorites: [FavoritePlace]
     var route: MKRoute?
+    /// Önizlemede seçilmemiş alternatif rotalar: gri çizilir, dokununca seçilir.
+    var alternateRoutes: [MKRoute] = []
     @Binding var overviewRoute: MKRoute?
     /// İlk konumda bir kez uygulanan 2D açılış kamerası.
     @Binding var initialCenter: CLLocationCoordinate2D?
@@ -44,6 +46,7 @@ struct CarMapView: UIViewRepresentable {
     var overviewLeftPadding: CGFloat
     var onPickPlace: (MKMapItem, String) -> Void
     var onDropPin: (CLLocationCoordinate2D) -> Void
+    var onSelectRoute: (MKRoute) -> Void = { _ in }
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView(frame: .zero)
@@ -101,7 +104,10 @@ struct CarMapView: UIViewRepresentable {
 
         // Tek seferlik kamera komutları
         if let overview = overviewRoute {
-            var rect = overview.polyline.boundingMapRect
+            // Alternatifler varsa hepsi kadraja girsin.
+            var rect = alternateRoutes.reduce(overview.polyline.boundingMapRect) {
+                $0.union($1.polyline.boundingMapRect)
+            }
             let w = rect.size.width, h = rect.size.height
             rect = rect.insetBy(dx: -w * 0.15, dy: -h * 0.15)
             map.setUserTrackingMode(.none, animated: false)
@@ -199,11 +205,19 @@ struct CarMapView: UIViewRepresentable {
         // Rota çizgisi: beyaz zemin + mavi hat (yüksek kontrast) — SADECE rota değişince.
         // Trafik açıkken rota yarı saydam çizilir: trafik renkleri içinden görünür.
         let routeID = route.map { ObjectIdentifier($0.polyline) }
-        guard routeID != c.lastRouteID || showTraffic != c.lastRouteTraffic else { return }
+        let alternateIDs = alternateRoutes.map { ObjectIdentifier($0.polyline) }
+        guard routeID != c.lastRouteID || showTraffic != c.lastRouteTraffic || alternateIDs != c.lastAlternateIDs else { return }
         c.lastRouteID = routeID
         c.lastRouteTraffic = showTraffic
+        c.lastAlternateIDs = alternateIDs
         map.removeOverlays(map.overlays)
         map.removeAnnotations(map.annotations.filter { $0 is DestinationAnnotation })
+        // Alternatifler önce eklenir: seçili rota hep üstte kalır.
+        c.alternateLines = alternateRoutes.map { alt in
+            let line = AlternateRoutePolyline(points: alt.polyline.points(), count: alt.polyline.pointCount)
+            map.addOverlay(line, level: .aboveRoads)
+            return (line, alt)
+        }
         if let route {
             if showTraffic {
                 let faded = RouteTrafficPolyline(points: route.polyline.points(), count: route.polyline.pointCount)
@@ -247,6 +261,8 @@ struct CarMapView: UIViewRepresentable {
         var lastFavKey = ""
         var lastRouteID: ObjectIdentifier?
         var lastRouteTraffic = false
+        var lastAlternateIDs: [ObjectIdentifier] = []
+        var alternateLines: [(line: AlternateRoutePolyline, route: MKRoute)] = []
         var lastResetNorthTick = 0
         var navFollowing = false
         var lastNavAltitude: Double = 0
@@ -274,7 +290,42 @@ struct CarMapView: UIViewRepresentable {
                 if v is MKAnnotationView { return }
                 hit = v.superview
             }
+            // Gri alternatif rotaya dokunuldu: o rotayı seç.
+            if let route = alternateRoute(near: g.location(in: map), in: map) {
+                parent.onSelectRoute(route)
+                return
+            }
             parent.tapTick += 1
+        }
+
+        /// Dokunulan noktaya ~24 pt'den yakın alternatif rota (en yakını).
+        private func alternateRoute(near point: CGPoint, in map: MKMapView) -> MKRoute? {
+            var best: (route: MKRoute, distance: CGFloat)?
+            for (line, route) in alternateLines {
+                let d = Self.distance(from: point, to: line, in: map)
+                if d < 24, d < (best?.distance ?? .greatestFiniteMagnitude) {
+                    best = (route, d)
+                }
+            }
+            return best?.route
+        }
+
+        private static func distance(from p: CGPoint, to line: MKPolyline, in map: MKMapView) -> CGFloat {
+            let pts = line.points()
+            var best = CGFloat.greatestFiniteMagnitude
+            var previous: CGPoint?
+            for i in 0..<line.pointCount {
+                let v = map.convert(pts[i].coordinate, toPointTo: map)
+                if let a = previous {
+                    let dx = v.x - a.x, dy = v.y - a.y
+                    let len2 = dx * dx + dy * dy
+                    var t = len2 > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2 : 0
+                    t = min(max(t, 0), 1)
+                    best = min(best, hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)))
+                }
+                previous = v
+            }
+            return best
         }
 
         @objc func handlePan(_ g: UIPanGestureRecognizer) {
@@ -467,6 +518,14 @@ struct CarMapView: UIViewRepresentable {
                 r.alpha = 0.9
                 return r
             }
+            if overlay is AlternateRoutePolyline, let line = overlay as? MKPolyline {
+                let r = MKPolylineRenderer(polyline: line)
+                r.strokeColor = UIColor.systemGray.withAlphaComponent(0.85)
+                r.lineWidth = 7
+                r.lineCap = .round
+                r.lineJoin = .round
+                return r
+            }
             if let line = overlay as? MKPolyline {
                 let r = MKPolylineRenderer(polyline: line)
                 r.strokeColor = .systemBlue
@@ -497,6 +556,9 @@ final class RouteCasingPolyline: MKPolyline {}
 
 /// Trafik açıkken rota: ince, yarı saydam mavi; alttaki trafik rengi içinden görünür.
 final class RouteTrafficPolyline: MKPolyline {}
+
+/// Önizlemede seçilmemiş alternatif rota: gri.
+final class AlternateRoutePolyline: MKPolyline {}
 
 /// Rota varış noktası (seçili yer / favori pin'lerinden bağımsız).
 final class DestinationAnnotation: NSObject, MKAnnotation {

@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 /// Navigasyon durum kartları (arama çubuğunun altında): hata, hesaplanıyor,
 /// rota önizlemesi, sürüş (manevra + "Ardından") ve varış.
@@ -32,28 +33,41 @@ struct NavBannerView: View {
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         case .preview:
-            HStack(spacing: 8) {
-                Image(systemName: "car.fill").foregroundStyle(.blue)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(nav.destinationName).font(.subheadline.bold()).lineLimit(1)
-                    Text("\(NavFormat.distance(nav.distanceRemaining)) • Arrive \(nav.eta.map(NavFormat.time) ?? "—")")
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "car.fill").foregroundStyle(.blue)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(nav.destinationName).font(.subheadline.bold()).lineLimit(1)
+                        Text("\(NavFormat.distance(nav.distanceRemaining)) • Arrive \(nav.eta.map(NavFormat.time) ?? "—")")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Button("Go") {
+                        nav.start()
+                    }
+                    .font(.subheadline.bold())
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.green)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+                    Button("Close") { nav.stop(); onClose() }
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
-                Spacer(minLength: 0)
-                Button("Go") {
-                    nav.start()
+
+                // Alternatif rotalar: süre, en hızlıya göre fark, ana yol ve mesafe.
+                if nav.routeOptions.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(Array(nav.routeOptions.enumerated()), id: \.offset) { index, option in
+                                routeChip(index: index, option: option)
+                            }
+                        }
+                    }
                 }
-                .font(.subheadline.bold())
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.green)
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
-                Button("Close") { nav.stop(); onClose() }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
@@ -155,5 +169,49 @@ struct NavBannerView: View {
             .padding(10)
             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
+    }
+
+    private func routeChip(index: Int, option: MKRoute) -> some View {
+        let selected = index == nav.selectedRouteIndex
+        let fastest = nav.routeOptions.first?.expectedTravelTime ?? option.expectedTravelTime
+        let extra = option.expectedTravelTime - fastest
+        let detail = [option.name, NavFormat.distance(option.distance)]
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+        return Button {
+            nav.selectRoute(at: index)
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(NavFormat.duration(option.expectedTravelTime))
+                        .font(.subheadline.bold())
+                        .monospacedDigit()
+                    if index == 0 {
+                        Text("Fastest")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.green)
+                    } else if extra >= 60 {
+                        Text(verbatim: "+\(NavFormat.duration(extra))")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.orange)
+                    }
+                }
+                Text(detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(minWidth: 96, maxWidth: 170, minHeight: 44, alignment: .leading)
+            .background(selected ? Color.accentColor.opacity(0.28) : Color.white.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 10))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(selected ? Color.accentColor : Color.clear, lineWidth: 1.5)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

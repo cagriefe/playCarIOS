@@ -49,6 +49,7 @@ struct MapPanelView: View {
                 followMode: $followMode,
                 favorites: favorites.favorites,
                 route: nav.route,
+                alternateRoutes: nav.phase == .preview ? nav.routeOptions.filter { $0 !== nav.route } : [],
                 overviewRoute: $overviewRoute,
                 initialCenter: $initialCenter,
                 mapStyleLight: mapStyleLight,
@@ -60,7 +61,12 @@ struct MapPanelView: View {
                 navAltitude: nav.phase == .navigating ? nav.altitudeForNextManeuver() : 0,
                 overviewLeftPadding: contentLeading + 10,
                 onPickPlace: { item, subtitle in pickPlace(item, subtitle: subtitle) },
-                onDropPin: { coord in dropPin(at: coord) }
+                onDropPin: { coord in dropPin(at: coord) },
+                onSelectRoute: { selected in
+                    if let index = nav.routeOptions.firstIndex(where: { $0 === selected }) {
+                        nav.selectRoute(at: index)
+                    }
+                }
             )
             .ignoresSafeArea()
 

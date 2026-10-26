@@ -2,15 +2,19 @@ import SwiftUI
 
 /// CarPlay tarzı hız kartı: yatay düzen, solda büyük rakam,
 /// sağda tipografik limit + limit çizgili ince gauge + durum. Yuvarlak yüzen kart.
+/// Hız rakamına dokununca kart yolculuk özetine döner (10 sn sonra / limit
+/// aşılınca kendiliğinden hıza geri gelir).
 struct SpeedometerView: View {
     @ObservedObject var location: LocationManager
     @ObservedObject var limits: SpeedLimitStore
+    @ObservedObject var trip: TripStore
 
     /// Otomatik tahmin kapalıyken kalıcı elle limit (iOS'ta public hız-limiti API'si yok).
     /// Birim bölgeye göre: km/h veya mph (ayrı saklanır, dönüşüm yuvarlaması olmasın).
     @AppStorage("speedLimitKmh") private var speedLimitKmh: Double = 90
     @AppStorage("speedLimitMph") private var speedLimitMph: Double = 55
     @State private var showPicker = false
+    @State private var showTrip = false
 
     private let imperial = NavFormat.usesImperial
     private var unitLabel: String { imperial ? "mph" : "km/h" }
@@ -37,6 +41,31 @@ struct SpeedometerView: View {
     }
 
     var body: some View {
+        // Hız içeriği yerinde kalır (kart yüksekliği değişmesin), yolculuk üstüne biner.
+        ZStack {
+            speedContent
+                .opacity(showTrip ? 0 : 1)
+                .allowsHitTesting(!showTrip)
+            if showTrip {
+                tripContent
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .animation(.easeInOut(duration: 0.2), value: showTrip)
+        .task(id: showTrip) {
+            guard showTrip else { return }
+            try? await Task.sleep(for: .seconds(10))
+            showTrip = false
+        }
+        .onChange(of: speed > speedLimit) { _, over in
+            if over { showTrip = false }
+        }
+    }
+
+    private var speedContent: some View {
         VStack(spacing: 3) {
             HStack(spacing: 10) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
@@ -51,6 +80,10 @@ struct SpeedometerView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                .contentShape(Rectangle())
+                .onTapGesture { showTrip = true }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(Text("Shows the trip summary"))
                 Spacer(minLength: 0)
                 Button { showPicker = true } label: {
                     SpeedLimitBadge(value: Int(speedLimit), over: speed > speedLimit)
@@ -88,9 +121,58 @@ struct SpeedometerView: View {
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// Yolculuk özeti: mesafe, sürüş süresi, ortalama ve en yüksek hız.
+    private var tripContent: some View {
+        let distance = TripFormat.distance(trip.distance, imperial: imperial)
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("TRIP")
+                    .font(.system(size: 9, weight: .semibold))
+                    .tracking(1.6)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button { trip.reset() } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption.bold())
+                        .frame(width: 36, height: 26)
+                }
+                .accessibilityLabel("Reset trip")
+            }
+            HStack(alignment: .top, spacing: 6) {
+                tripStat(distance.value, unit: distance.unit, label: "Distance")
+                tripStat(TripFormat.drivingTime(trip.drivingTime), unit: nil, label: "Driving")
+                tripStat("\(TripFormat.speed(trip.averageSpeed, imperial: imperial))", unit: unitLabel, label: "Average")
+                tripStat("\(TripFormat.speed(trip.maxSpeed, imperial: imperial))", unit: unitLabel, label: "Top speed")
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+        .onTapGesture { showTrip = false }
+    }
+
+    private func tripStat(_ value: String, unit: String?, label: LocalizedStringKey) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(verbatim: value)
+                    .font(.system(size: 20, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                if let unit {
+                    Text(verbatim: unit)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Hızlı seçim: ülkenin standart limitleri büyük butonlarla.

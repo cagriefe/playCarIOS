@@ -13,6 +13,7 @@ struct DashboardView: View {
     @StateObject private var contacts = FavoriteContactsStore()
     @StateObject private var speedLimits = SpeedLimitStore()
     @StateObject private var dnd = DoNotDisturbController()
+    @StateObject private var trip = TripStore()
     @Environment(\.scenePhase) private var scenePhase
     /// Çentik (notch / Dynamic Island) solda mı? Yatayda iOS iki yana da
     /// aynı güvenli alanı verir; hangi tarafta olduğunu yönelim söyler.
@@ -76,7 +77,9 @@ struct DashboardView: View {
             updateNotchSide()
         }
         .onChange(of: locationManager.lastLocation) { _, loc in
-            if let loc { speedLimits.update(loc) }
+            guard let loc else { return }
+            speedLimits.update(loc)
+            trip.update(loc)
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
@@ -114,7 +117,7 @@ struct DashboardView: View {
     private var rightColumn: some View {
         VStack(spacing: 8) {
             miniStatus
-            SpeedometerView(location: locationManager, limits: speedLimits)
+            SpeedometerView(location: locationManager, limits: speedLimits, trip: trip)
             FavoriteContactsRow(contacts: contacts, calls: callStore)
             MediaControlView(player: musicManager, calls: callStore)
         }

@@ -44,6 +44,7 @@
 		B10000000000000000000032 /* DoNotDisturbController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000032 /* DoNotDisturbController.swift */; };
 		B10000000000000000000033 /* DNDSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000033 /* DNDSetupView.swift */; };
 		B20000000000000000000005 /* PlayCar DND.shortcut in Resources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000005 /* PlayCar DND.shortcut */; };
+		B10000000000000000000034 /* TripStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000034 /* TripStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -86,6 +87,7 @@
 		F10000000000000000000032 /* DoNotDisturbController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoNotDisturbController.swift; sourceTree = "<group>"; };
 		F10000000000000000000033 /* DNDSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DNDSetupView.swift; sourceTree = "<group>"; };
 		F50000000000000000000005 /* PlayCar DND.shortcut */ = {isa = PBXFileReference; lastKnownFileType = file; name = "PlayCar DND.shortcut"; path = "Resources/PlayCar DND.shortcut"; sourceTree = "<group>"; };
+		F10000000000000000000034 /* TripStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -139,6 +141,7 @@
 				F10000000000000000000004 /* MusicPlayerManager.swift */,
 				F10000000000000000000005 /* SearchService.swift */,
 				F10000000000000000000006 /* TelemetryStore.swift */,
+				F10000000000000000000034 /* TripStore.swift */,
 				F10000000000000000000012 /* FavoritesStore.swift */,
 				F10000000000000000000013 /* NavigationStore.swift */,
 				F10000000000000000000029 /* RouteGeometry.swift */,
@@ -256,6 +259,7 @@
 				B10000000000000000000004 /* MusicPlayerManager.swift in Sources */,
 				B10000000000000000000005 /* SearchService.swift in Sources */,
 				B10000000000000000000006 /* TelemetryStore.swift in Sources */,
+				B10000000000000000000034 /* TripStore.swift in Sources */,
 				B10000000000000000000012 /* FavoritesStore.swift in Sources */,
 				B10000000000000000000013 /* NavigationStore.swift in Sources */,
 				B10000000000000000000029 /* RouteGeometry.swift in Sources */,

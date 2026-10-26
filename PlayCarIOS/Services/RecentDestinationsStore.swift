@@ -24,8 +24,11 @@ final class RecentDestinationsStore: ObservableObject {
     @Published private(set) var items: [RecentDestination] = []
 
     private let storageKey = "recentDestinations.v1"
+    private let defaults: UserDefaults
 
-    init() {
+    /// `defaults` testler içindir (gerçek kayıtlara dokunmamak için).
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -55,7 +58,7 @@ final class RecentDestinationsStore: ObservableObject {
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+        guard let data = defaults.data(forKey: storageKey),
               let decoded = try? JSONDecoder().decode([RecentDestination].self, from: data)
         else { return }
         items = decoded
@@ -63,7 +66,7 @@ final class RecentDestinationsStore: ObservableObject {
 
     private func save() {
         if let data = try? JSONEncoder().encode(items) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
     }
 }

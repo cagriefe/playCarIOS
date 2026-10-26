@@ -31,8 +31,11 @@ final class FavoritesStore: ObservableObject {
     @Published private(set) var favorites: [FavoritePlace] = []
 
     private let storageKey = "favoritePlaces.v1"
+    private let defaults: UserDefaults
 
-    init() {
+    /// `defaults` testler içindir (gerçek kayıtlara dokunmamak için).
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         load()
     }
 
@@ -53,7 +56,9 @@ final class FavoritesStore: ObservableObject {
     }
 
     func remove(at offsets: IndexSet) {
-        favorites.remove(atOffsets: offsets)
+        for index in offsets.sorted(by: >) where favorites.indices.contains(index) {
+            favorites.remove(at: index)
+        }
         save()
     }
 
@@ -78,7 +83,7 @@ final class FavoritesStore: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+        guard let data = defaults.data(forKey: storageKey),
               let decoded = try? JSONDecoder().decode([FavoritePlace].self, from: data)
         else { return }
         favorites = decoded
@@ -86,7 +91,7 @@ final class FavoritesStore: ObservableObject {
 
     private func save() {
         if let data = try? JSONEncoder().encode(favorites) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            defaults.set(data, forKey: storageKey)
         }
     }
 }

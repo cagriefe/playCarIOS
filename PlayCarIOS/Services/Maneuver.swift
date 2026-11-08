@@ -43,13 +43,44 @@ enum ManeuverClassifier {
     /// Metin önceliklidir (Apple'ın kendi tarifi); metin yön içermiyorsa açı kullanılır.
     static func classify(instruction: String, turnAngle: Double?, isLast: Bool) -> Maneuver {
         if isLast { return .arrive }
-        if let fromText = fromText(instruction) { return fromText }
+        if let fromText = fromText(instruction) {
+            // Yol adı metni yanıltmış olabilir: geometri net şekilde ters yönü
+            // gösteriyorsa (≥30°) geometriye güven.
+            if let turnAngle, let side = side(of: fromText), abs(turnAngle) >= 30,
+               (turnAngle > 0) != (side > 0) {
+                return fromAngle(turnAngle)
+            }
+            return fromText
+        }
         if let turnAngle { return fromAngle(turnAngle) }
         return .straight
     }
 
+    /// +1 sağ, −1 sol, nil yönsüz.
+    static func side(of m: Maneuver) -> Int? {
+        switch m {
+        case .right, .slightRight, .sharpRight, .keepRight: return 1
+        case .left, .slightLeft, .sharpLeft, .keepLeft: return -1
+        default: return nil
+        }
+    }
+
+    /// Yol adını ("Sol Sk.", "Sağlık Cd." …) talimattan ayıkla ki yön kelimesi
+    /// sanılmasın: "X istikametine doğru sağa dönün" → "sağa dönün".
+    static func stripRoadName(_ t: String) -> String {
+        var s = t
+        for marker in ["istikametine doğru ", "istikametine ", " onto ", " toward ", " towards "] {
+            if let r = s.range(of: marker, options: .backwards) {
+                let tail = String(s[r.upperBound...])
+                // İngilizce "onto/toward": addan sonrası yön değil; yönü öncesinde ara.
+                if marker.hasPrefix(" ") { s = String(s[..<r.lowerBound]) } else if !tail.isEmpty { s = tail }
+            }
+        }
+        return s
+    }
+
     static func fromText(_ instruction: String) -> Maneuver? {
-        let t = instruction.lowercased(with: tr)
+        let t = stripRoadName(instruction.lowercased(with: tr))
         guard !t.isEmpty else { return nil }
         if t.contains("varış") || t.contains("hedefe ulaş") || t.contains("hedefe var") { return .arrive }
         if t.contains("u dönüşü") || t.contains("u-dönüşü") || t.contains("geri dönün") { return .uTurn }

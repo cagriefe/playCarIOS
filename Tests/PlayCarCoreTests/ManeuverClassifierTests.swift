@@ -46,6 +46,19 @@ final class ManeuverClassifierTests: XCTestCase {
         XCTAssertEqual(ManeuverClassifier.classify(instruction: "Sağa dönün", turnAngle: nil, isLast: true), .arrive)
     }
 
+    func testRoadNamesDoNotFakeDirection() {
+        XCTAssertEqual(ManeuverClassifier.fromText("Sol Sk. istikametine doğru sağa dönün"), .right)
+        XCTAssertEqual(ManeuverClassifier.fromText("Solaklı Cd. istikametine doğru sağa dönün"), .right)
+        XCTAssertEqual(ManeuverClassifier.fromText("Sağ Sk. istikametine doğru sola dönün"), .left)
+        XCTAssertEqual(ManeuverClassifier.fromText("Turn left onto Right St."), .left)
+    }
+
+    func testGeometryOverridesContradictingText() {
+        XCTAssertEqual(ManeuverClassifier.classify(instruction: "Sağa dönün", turnAngle: -90, isLast: false), .left)
+        XCTAssertEqual(ManeuverClassifier.classify(instruction: "Sola dönün", turnAngle: 90, isLast: false), .right)
+        XCTAssertEqual(ManeuverClassifier.classify(instruction: "Sağa dönün", turnAngle: -10, isLast: false), .right)
+    }
+
     func testAngleThresholds() {
         XCTAssertEqual(ManeuverClassifier.fromAngle(10), .straight)
         XCTAssertEqual(ManeuverClassifier.fromAngle(-19), .straight)
